@@ -62,7 +62,6 @@
 <script type="module">
     import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
 
-    // Chargement de la clé au démarrage
     window.onload = function() {
         const savedKey = localStorage.getItem('gemini_api_key');
         if (savedKey) document.getElementById('api_key').value = savedKey;
@@ -87,32 +86,36 @@
 
         try {
             const genAI = new GoogleGenerativeAI(key);
-            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+            // Utilisation du nom de modèle complet pour éviter l'erreur 404
+            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
-            const prompt = `Tu es un expert en relation client. Rédige la réponse au client et la section BASE en suivant strictement ces instructions :
+            const prompt = `Tu es un conseiller expert du service client TotalEnergies. 
+            Rédige la réponse e-mail et la section BASE en respectant strictement ces directives :
             ${inst}
             
-            HISTORIQUE : ${hist}
-            DEMANDE CLIENT : ${dem}
+            DONNÉES DU DOSSIER :
+            Historique : ${hist}
+            Demande actuelle : ${dem}
             
-            Format de réponse attendu (utilise exactement ce séparateur) :
+            FORMAT DE SORTIE IMPÉRATIF (utilise ce séparateur exact) :
             [REPONSE]
-            (Ton texte d'e-mail ici)
+            (Insère ici ton e-mail complet sans point à la fin de l'objet)
             [SEPARATEUR]
-            (Ta section BASE ici)`;
+            (Insère ici la section BASE au format strict)`;
 
             const result = await model.generateContent(prompt);
             const text = result.response.text();
             
             const splitContent = text.split('[SEPARATEUR]');
             const reponseFinie = splitContent[0].replace('[REPONSE]', '').trim();
-            const baseFinie = splitContent[1] ? splitContent[1].trim() : "";
+            const baseFinie = splitContent[1] ? splitContent[1].trim() : "B : \nA : \nS : \nE : ";
 
             document.getElementById('reponse_client').value = reponseFinie;
             document.getElementById('base_area').value = baseFinie;
 
         } catch (error) {
-            alert("Erreur Gemini : " + error.message);
+            console.error(error);
+            alert("Erreur technique : " + error.message);
         } finally {
             btn.innerText = "GÉNÉRER AVEC GEMINI ✨";
             btn.disabled = false;
@@ -131,7 +134,7 @@
 
     window.copierTexte = function(id) {
         const val = document.getElementById(id).value;
-        navigator.clipboard.writeText(val);
+        if(val) navigator.clipboard.writeText(val);
     };
 
     window.preparerEtCopierHisto = function() {
@@ -144,7 +147,7 @@
     };
 
     window.toutVider = function() {
-        if(confirm("Vider le dossier en cours ?")) {
+        if(confirm("Voulez-vous effacer ce dossier ?")) {
             ['historique', 'demande', 'instructions', 'base_area'].forEach(id => document.getElementById(id).value = "");
             initSignature();
         }
