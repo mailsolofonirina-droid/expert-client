@@ -2,252 +2,153 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Interface Expert TotalEnergies</title>
+    <title>Interface Expert Relation Client - Gemini Edition</title>
     <style>
         body { font-family: 'Segoe UI', Arial, sans-serif; background: #ffffff; margin: 0; padding: 10px; font-size: 12px; color: #333; }
         .wrapper { display: grid; grid-template-columns: 0.8fr 2.4fr 0.8fr; gap: 15px; height: 97vh; }
-        .column { background: #fcfcfc; border: 1px solid #eee; border-radius: 4px; display: flex; flex-direction: column; padding: 12px; overflow: hidden; }
+        .column { background: #ffffff; border: 1px solid #eee; border-radius: 4px; display: flex; flex-direction: column; padding: 12px; overflow: hidden; }
         h2 { font-size: 0.9em; color: #888; margin-top: 0; border-bottom: 1px solid #f0f0f0; padding-bottom: 5px; text-transform: uppercase; }
         label { font-weight: bold; display: block; margin: 8px 0 3px 0; color: #777; font-size: 0.85em; }
-        
-        textarea { width: 100%; border: 1px solid #ddd; border-radius: 2px; padding: 8px; box-sizing: border-box; font-family: inherit; resize: none; background: #fff; }
-        select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 2px; background: #fff; margin-bottom: 10px; cursor: pointer; }
-        
+        textarea, input { width: 100%; border: 1px solid #ddd; border-radius: 2px; padding: 8px; box-sizing: border-box; font-family: inherit; resize: none; background: #fff; }
         #historique, #demande { height: 12%; flex-grow: 0; }
         #instructions { flex-grow: 1; }
-        /* Style spécifique pour le champ avec LanguageTool */
-        #reponse_client { flex-grow: 1; font-size: 18px; line-height: 1.5; border: 2px solid #e0e0e0; }
-
-        .btn { cursor: pointer; border: 1px solid #ececec; border-radius: 2px; padding: 10px; font-weight: 500; transition: 0.2s; margin-top: 5px; width: 100%; background: #f9f9f9; color: #666; font-size: 0.9em; }
-        .btn:hover { background: #f2f2f2; border-color: #ddd; }
-        .btn-vider { background: #ffffff; border: 1px dashed #ccc; margin-bottom: 10px; color: #999; }
-        
+        #reponse_client { flex-grow: 1; font-size: 18px; line-height: 1.5; background: #f9f9f9; border-color: #ccc; }
+        .btn { cursor: pointer; border: 1px solid #ebebeb; border-radius: 2px; padding: 10px; font-weight: 500; transition: 0.2s; margin-top: 5px; width: 100%; background: #fdfdfd; color: #666; font-size: 0.9em; }
+        .btn:hover { background: #f4f4f4; border-color: #ddd; }
+        .btn-ai { background: #e3f2fd; border-color: #2196f3; color: #1976d2; font-weight: bold; }
+        .btn-ai:hover { background: #bbdefb; }
+        .btn-vider { background: #ffffff; border: 1px dashed #ccc; margin-bottom: 10px; color: #aaa; }
         .spacer { height: 10px; }
     </style>
 </head>
 <body>
 
 <div class="wrapper">
-    
     <div class="column">
         <h2>Préparation</h2>
+        <label>Clé API Gemini (sauvegardée localement)</label>
+        <input type="password" id="api_key" placeholder="AIzaSyC-5ibGl9hJ-nXzV_8h2aNNI2GVZ04tfB8" onchange="saveKey()">
         
-        <label>Canal de traitement</label>
-        <select id="canal_choix" onchange="majSignature()">
-            <option value="AM">Application Mobile</option>
-            <option value="EMAIL">E-mail</option>
-        </select>
-
         <label>Historique complet</label>
-        <textarea id="historique" spellcheck="false" placeholder="Laisser vide si aucun historique..."></textarea>
+        <textarea id="historique" placeholder="Laisser vide si aucun historique..."></textarea>
         
         <label>Demande à traiter</label>
-        <textarea id="demande" spellcheck="false" placeholder="Message client..."></textarea>
+        <textarea id="demande" placeholder="Message client avec l'heure..."></textarea>
         
-        <label>Instructions</label>
-        <textarea id="instructions" spellcheck="false" placeholder="Rédigez les instructions ici..."></textarea>
+        <label>Instructions de rédaction</label>
+        <textarea id="instructions" placeholder="Rédigez vos consignes ici..."></textarea>
         
-        <button class="btn" onclick="genererEtCopierPrompt()">GÉNÉRER ET COPIER LE PROMPT</button>
+        <button class="btn btn-ai" id="btn_generer" onclick="genererAvecGemini()">GÉNÉRER AVEC GEMINI ✨</button>
     </div>
 
     <div class="column">
         <h2>Traitement de la réponse</h2>
-        <label>Rédaction (Police 18px) - LanguageTool activé</label>
-        <textarea id="reponse_client" spellcheck="true" data-languagetool-id="reponse_client" placeholder="La réponse apparaîtra ici..."></textarea>
-        
+        <label>Rédaction (Police 18px)</label>
+        <textarea id="reponse_client" spellcheck="true"></textarea>
         <button class="btn" onclick="copierTexte('reponse_client')">COPIER LA RÉPONSE CLIENT</button>
     </div>
 
     <div class="column">
         <h2>Suivi & BASE</h2>
-        
-        <button class="btn btn-vider" onclick="toutVider()">VIDER</button>
-
+        <button class="btn btn-vider" onclick="toutVider()">VIDER TOUT</button>
         <label>BASE</label>
-        <textarea id="base_area" spellcheck="false" style="flex-grow: 1;" placeholder="B :&#10;A :&#10;S :&#10;E :"></textarea>
+        <textarea id="base_area" style="flex-grow: 1;" placeholder="B :&#10;A :&#10;S :&#10;E :"></textarea>
         <button class="btn" onclick="copierTexte('base_area')">COPIER BASE SEULE</button>
-
         <div class="spacer"></div>
         <button class="btn" style="padding: 15px;" onclick="preparerEtCopierHisto()">PRÉPARER ET COPIER HISTORISATION</button>
     </div>
-
 </div>
 
-<script>
+<script type="module">
+    import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
+
+    // Chargement de la clé au démarrage
     window.onload = function() {
-        majSignature();
+        const savedKey = localStorage.getItem('gemini_api_key');
+        if (savedKey) document.getElementById('api_key').value = savedKey;
+        initSignature();
     };
 
-    function majSignature() {
-        const canal = document.getElementById('canal_choix').value;
-        const now = new Date();
-        const heure = now.getHours();
-        const reponseArea = document.getElementById('reponse_client');
+    window.saveKey = function() {
+        localStorage.setItem('gemini_api_key', document.getElementById('api_key').value);
+    };
+
+    window.genererAvecGemini = async function() {
+        const btn = document.getElementById('btn_generer');
+        const key = document.getElementById('api_key').value;
+        const hist = document.getElementById('historique').value;
+        const dem = document.getElementById('demande').value;
+        const inst = document.getElementById('instructions').value;
+
+        if (!key) return alert("Veuillez saisir votre clé API.");
         
-        let salutation = (heure >= 2 && heure < 17) ? "Bonjour Madame," : "Bonsoir Monsieur,";
-        let souhaite = (heure >= 2 && heure < 17) ? "un excellent après-midi" : "une excellente soirée";
+        btn.innerText = "GÉNÉRATION EN COURS...";
+        btn.disabled = true;
 
-        if (canal === "EMAIL") {
-            reponseArea.value = `BP : \nMme ,\n\n\n\nJe reste à votre disposition pour toute information complémentaire et vous souhaite de passer ${souhaite}.\n\nCordialement,`;
-        } else {
-            reponseArea.value = `${salutation}\n\n\n\nJe reste à votre disposition pour toute information complémentaire et vous souhaite de passer ${souhaite}.\n\nCordialement,\n\nSolofonirina`;
+        try {
+            const genAI = new GoogleGenerativeAI(key);
+            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+            const prompt = `Tu es un expert en relation client. Rédige la réponse au client et la section BASE en suivant strictement ces instructions :
+            ${inst}
+            
+            HISTORIQUE : ${hist}
+            DEMANDE CLIENT : ${dem}
+            
+            Format de réponse attendu (utilise exactement ce séparateur) :
+            [REPONSE]
+            (Ton texte d'e-mail ici)
+            [SEPARATEUR]
+            (Ta section BASE ici)`;
+
+            const result = await model.generateContent(prompt);
+            const text = result.response.text();
+            
+            const splitContent = text.split('[SEPARATEUR]');
+            const reponseFinie = splitContent[0].replace('[REPONSE]', '').trim();
+            const baseFinie = splitContent[1] ? splitContent[1].trim() : "";
+
+            document.getElementById('reponse_client').value = reponseFinie;
+            document.getElementById('base_area').value = baseFinie;
+
+        } catch (error) {
+            alert("Erreur Gemini : " + error.message);
+        } finally {
+            btn.innerText = "GÉNÉRER AVEC GEMINI ✨";
+            btn.disabled = false;
         }
-    }
+    };
 
-    function genererEtCopierPrompt() {
-        const h = document.getElementById('historique').value.trim();
-        const d = document.getElementById('demande').value.trim();
-        const i = document.getElementById('instructions').value.trim();
+    window.initSignature = function() {
+        const h = new Date().getHours();
+        const area = document.getElementById('reponse_client');
+        if (h >= 6 && h < 17) {
+            area.value = "\n\nJe reste à votre disposition pour toute information complémentaire et vous souhaite de passer un excellent après-midi.\n\nCordialement,\n\nSolofonirina";
+        } else {
+            area.value = "\n\nJe reste à votre disposition pour toute information complémentaire et vous souhaite de passer une excellente soirée.\n\nCordialement,\n\nSolofonirina";
+        }
+    };
 
-        const fullPrompt = `Demande du client :
-${h ? h : ""}
-${d}
+    window.copierTexte = function(id) {
+        const val = document.getElementById(id).value;
+        navigator.clipboard.writeText(val);
+    };
 
-****************************
-instruction de la réponse
-${i}
-
-************************************
-Directives de Rédaction (Expert Relation Client) :
-
-1. Identité et Posture :
-
-Persona : Vous êtes un conseiller expert du service client TotalEnergies.
-
-Ton : Adoptez un ton chaleureux, rassurant et pédagogue.
-
-La première phrase doit fusionner l'accueil et la prise en charge en adaptant le ton à l'émotion ou à la situation exprimée par le client. Vous devez varier vos formulations pour refléter précisément l'objet du message (regret pour un désagrément, apport de clarté pour un doute ou accompagnement pour une démarche) afin d'éviter toute répétition automatique.
-
-
-2. Articulation et fluidité :
-
-Rédaction naturelle, sans exagération des connecteurs logiques. Séparez chaque idée par un paragraphe distinct.
-
-3. Règles de Construction Stricte :
-
-Format : Texte simple (e-mail), sans listes à puces ni tirets (sauf pour la section BASE).
-
-
-Personnalisation : Utilisez le "je" pour vos actions et le "nous" pour représenter TotalEnergies.
-
-Syntaxes obligatoires : Utilisez le mode déclaratif. Pour les actions attendues du client, utilisez des formes de courtoisie (Ex : "Je vous invite à", "je vous prie de").
-
-Chiffres et Unités : Écrivez les nombres en chiffres (ex: 2 jours, 150 €). Utilisez strictement les unités : €, kWh, kVA.
-
-Format des Dates : Toutes les dates doivent être rédigées au format "jour mois année" avec le mois écrit en lettres (ex : 5 mars 2026). L'utilisation de barres obliques (/) pour les dates est interdite.
-
-
-Temps : Utilisez le futur simple pour les actions à venir (ex: "Je ferai").
-
-Respect des Rubriques : Lors d'une redirection vers l'Espace Client, vous devez impérativement respecter la mise en page suivante : dans la rubrique "Nom de la rubrique > Sous-rubrique". 
-n'invite aucune rubrique
-
-ne supprime pas le lien que je met dans la réponse
-
-Interdiction d'extrapoler les rubriques : Vous devez utiliser exclusivement les rubriques et sous-rubriques explicitement fournies dans les instructions de gestion ou les exemples du prompt. S'il n'y a pas de rubrique mentionnée pour une action spécifique, ne proposez pas de chemin de navigation.
-
-4. Lexique et Terminologie :
-
-Mots à banir : problème, malheureusement, recommander, engager, engagement, meilleurs délais, impatience, co-titulaire
-
-Respecter : ENEDIS, gestionnaire du réseau d'électricité ; GRDF, gestionnaire du réseau de gaz ; Heures Pleines / Heures Creuses ; chèque énergie.
-
-Respecter la ponctuation : virgule (,) en fin de ligne si incomplet, point (.) si phrase complète. La dernière ligne finit toujours par un point.
-
-Le nom du client, prénom du client, adresse du client doivent être au majuscule
-sur la civilité : seul l'initial est au majuscule (Madame/Monsieur)
-
-
-Majuscules systématiques : Les noms des services internes doivent toujours porter une majuscule sur chaque initiale (ex: Service Technique, Service Déménagement....).
-
-Séparer chaque idée par paragraphe
-
-Si je mentionne que j'ai transmis la demande à un autre service dans la réponse, fourrnir une commentaire expliquer la demande du client avant la BASE  afin que le service concerné puisse comprendre la demande du client 
-
-Contact du Service Paiement : 09 70 80 65 45 (prix d’un appel local), disponible du lundi au samedi, de 9 h à 19 h
-
-Contact de l'Agence de Services et de Paiements (ASP) : 08 05 20 48 05
-
-Contact Service Technique : 09 70 80 69 69 (du lundi au samedi, de 9 h à 19 h).
-
-Contact Service Clientèle : 09 70 80 69 69 (du lundi au samedi, de 9 h à 19 h).
-
-Contact Service Commercial : 30 99, disponible tous les jours de 8 h à 20 h
-
-Engagement Satisfaction Client et Pédagogie :
-
-Valorisation et Allié du Client : Adoptez une posture de partenaire conseil. Si une demande n'est pas recevable, ne vous contentez pas d'un refus ; expliquez le "pourquoi" pédagogiquement et basculez immédiatement sur une solution alternative ou un conseil utile (méthode du pivot positif).
-
-Transparence et Clarté : Évitez le jargon technique. Expliquez les calculs ou les règles de gestion de manière simple pour que le client comprenne la situation, ce qui réduit la frustration même en cas de désaccord.
-
-Preuve d'Étude du Dossier : Pour montrer que la demande a été traitée avec soin, citez systématiquement des éléments précis (montant exact TTC, numéro de facture, dates ou index de consommation....).
-
-
-Structure de la Réponse Attendue :
-
-
-Objet d'e-mail synthétique (pas de point à la fin de l'objet)
-
-Corps de l'e-mail avec salutations et formule de politesse personnalisée.
-
-Séparateur (***).
-
-Section BASE (Format Stricte).
-
-
-📝 Complétion BASE (Format Stricte)
-
-B : résumé de la demande du client en une phrase simple >>> le client demande/souhaite
-
-(ligne vide) A : informations factuelles et précises constatées sur le dossier du client après vérification. Si aucune information spécifique au dossier ne correspond à l'analyse, cette ligne doit rester vide.
-
-
-(ligne vide) S : résumé clair de la solution ou information apportée en utilisant "j'ai informé/fait/proposé/expliqué"
-
-
-(ligne vide) E :  les actions possibles sur l'Espace Client/Application Mobile ou les anticipation que j'ai indiquées dans la réponse. Indiquer n/a si aucun des deux.`;
-
-        copyToClipboard(fullPrompt);
-    }
-
-    function preparerEtCopierHisto() {
+    window.preparerEtCopierHisto = function() {
         const d = document.getElementById('demande').value;
         const r = document.getElementById('reponse_client').value;
         const b = document.getElementById('base_area').value;
-        const canal = document.getElementById('canal_choix').value;
-        
-        const hMatch = d.match(/([01]?[0-9]|2[0-3]):[0-5][0-9]/);
-        const heureDemande = hMatch ? hMatch[0] : "--:--";
-        
-        const today = new Date();
-        const dateStr = today.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+        const datePoste = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+        const bloc = `${b}\n\n***************************\n\nFait le ${datePoste}\n\nRequête client :\n${d}\n\nRéponse :\n${r}`;
+        navigator.clipboard.writeText(bloc);
+    };
 
-        const labelEntete = (canal === "EMAIL") ? `Mail Odigo du ${dateStr} à ${heureDemande}` : `AM du ${dateStr} à ${heureDemande}`;
-        const rP = r.split('***')[0].trim();
-
-        const bloc = `${b || "B : \n\nA : \n\nS : \n\nE : "}\n\n***************************\n\n${labelEntete}\n\nRequête client :\n${d}\n\nRéponse apportée :\n\n${rP}`;
-        
-        copyToClipboard(bloc);
-    }
-
-    function copierTexte(id) {
-        copyToClipboard(document.getElementById(id).value);
-    }
-
-    function copyToClipboard(text) {
-        navigator.clipboard.writeText(text).then(() => {
-            alert("Copié dans le presse-papier !");
-        });
-    }
-
-    function toutVider() {
-        if(confirm("Effacer tous les champs (hors canal) ?")) {
-            ['historique', 'demande', 'instructions', 'base_area'].forEach(id => {
-                document.getElementById(id).value = "";
-            });
-            majSignature();
+    window.toutVider = function() {
+        if(confirm("Vider le dossier en cours ?")) {
+            ['historique', 'demande', 'instructions', 'base_area'].forEach(id => document.getElementById(id).value = "");
+            initSignature();
         }
-    }
+    };
 </script>
 
 </body>
