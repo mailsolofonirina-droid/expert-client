@@ -195,85 +195,77 @@
             throw new Error("Veuillez saisir une demande client à traiter.");
         }
         
-        const formatSpecifique = canal === "EMAIL" ? 
-            "Format E-mail avec objet et BP" : 
-            "Format Application Mobile avec salutation et signature Solofonirina";
-        
-        return `Tu es un expert relation client TotalEnergies. Rédige une réponse professionnelle et une section BASE au format strict.
+        if (canal === "EMAIL") {
+            return `Tu es un expert relation client TotalEnergies.
 
-CANAL DE RÉPONSE : ${canal === "EMAIL" ? "E-MAIL" : "APPLICATION MOBILE"}
-${formatSpecifique}
+DEMANDE CLIENT : ${dem}
+${hist ? `HISTORIQUE : ${hist}` : ""}
+${inst ? `INSTRUCTIONS : ${inst}` : ""}
 
-DEMANDE CLIENT À TRAITER :
-${dem}
+## FORMAT DE RÉPONSE STRICT POUR E-MAIL :
 
-${hist ? `HISTORIQUE :\n${hist}\n` : ""}
-${inst ? `INSTRUCTIONS SPÉCIFIQUES :\n${inst}\n` : ""}
+Tu dois rédiger UNIQUEMENT le contenu du message (BP), SANS ajouter d'objet ni de signature.
+
+La structure EXACTE à respecter est :
+
+[Texte du message avec paragraphes]
+
+IMPORTANT : 
+- Tu ne dois PAS écrire "Objet :"
+- Tu ne dois PAS écrire "BP :"
+- Tu ne dois PAS écrire "Mme ,"
+- Tu ne dois PAS écrire "Je reste à votre disposition..."
+- Tu ne dois PAS écrire "Cordialement,"
+- Tu rédiges UNIQUEMENT le contenu du message
 
 ## RÈGLES DE RÉDACTION :
+- Ton chaleureux, rassurant, pédagogue
+- Utilise "je" pour tes actions, "nous" pour TotalEnergies
+- Nombres en chiffres
+- Dates au format "jour mois année"
+- Mots interdits : problème, malheureusement, recommander, engagement, meilleurs délais
+- Noms et prénoms clients en MAJUSCULES
 
-1. Ton : chaleureux, rassurant, pédagogue
-2. Utilise "je" pour tes actions, "nous" pour TotalEnergies
-3. Nombres en chiffres (ex: 2 jours, 150 €)
-4. Unités : €, kWh, kVA
-5. Dates au format "jour mois année" (ex: 5 mars 2026) - INTERDICTION des barres obliques (/)
-6. Mots interdits : problème, malheureusement, recommander, engager, engagement, meilleurs délais, impatience, co-titulaire
-7. Noms et prénoms clients en MAJUSCULES
-8. Services internes : majuscule sur chaque initiale (Service Technique, Service Déménagement...)
-9. Respecter : ENEDIS, gestionnaire du réseau d'électricité ; GRDF, gestionnaire du réseau de gaz ; Heures Pleines / Heures Creuses ; chèque énergie
+Génère maintenant UNIQUEMENT le contenu du message (sans objet, sans BP, sans signature).`;
+        
+        } else {
+            return `Tu es un expert relation client TotalEnergies.
 
-## CONTACTS OFFICIELS :
-- Service Paiement : 09 70 80 65 45 (lundi-samedi 9h-19h)
-- ASP : 08 05 20 48 05
-- Service Technique/Clientèle : 09 70 80 69 69
-- Service Commercial : 30 99 (tous les jours 8h-20h)
+DEMANDE CLIENT : ${dem}
+${hist ? `HISTORIQUE : ${hist}` : ""}
+${inst ? `INSTRUCTIONS : ${inst}` : ""}
 
-## FORMAT DE RÉPONSE EXIGÉ :
+## FORMAT DE RÉPONSE STRICT POUR APPLICATION MOBILE :
 
-${canal === "EMAIL" ? 
-`Objet : [objet court]
+Tu dois rédiger UNIQUEMENT le corps du message, SANS salutation et SANS signature.
 
-BP : [texte du message]
+La structure EXACTE à respecter est :
 
-Mme [Prénom du client en MAJUSCULES],
+[Texte du message avec paragraphes]
 
-[Corps de la réponse avec paragraphes séparés]
+IMPORTANT : 
+- Tu ne dois PAS écrire "Bonjour" ou "Bonsoir"
+- Tu ne dois PAS écrire "Je reste à votre disposition..."
+- Tu ne dois PAS écrire "Cordialement,"
+- Tu ne dois PAS écrire "Solofonirina"
+- Tu rédiges UNIQUEMENT le contenu du message
 
-Je reste à votre disposition pour toute information complémentaire et vous souhaite de passer [un excellent après-midi/une excellente soirée].
+## RÈGLES DE RÉDACTION :
+- Ton chaleureux, rassurant, pédagogue
+- Utilise "je" pour tes actions, "nous" pour TotalEnergies
+- Nombres en chiffres
+- Dates au format "jour mois année"
+- Mots interdits : problème, malheureusement, recommander, engagement, meilleurs délais
+- Noms et prénoms clients en MAJUSCULES
 
-Cordialement,` : 
-`[Bonjour/Bonsoir] Monsieur [Prénom du client en MAJUSCULES],
-
-[Corps de la réponse avec paragraphes séparés]
-
-Je reste à votre disposition pour toute information complémentaire et vous souhaite de passer [un excellent après-midi/une excellente soirée].
-
-Cordialement,
-
-Solofonirina`}
-
-***
-
-B : [résumé de la demande en une phrase - "le client demande/souhaite"]
-
-A : [informations factuelles constatées sur le dossier - laisser vide si aucune]
-
-S : [résumé de la solution - "j'ai informé/fait/proposé/expliqué"]
-
-E : [actions sur Espace Client/Application Mobile ou anticipations - n/a si aucun]
-
-## IMPORTANT : 
-- La signature et les salutations (Bonjour/Bonsoir, après-midi/soirée) sont déjà gérées automatiquement par l'heure. Tu dois adapter le moment de la journée dans la formule de politesse.
-- Pour l'Application Mobile : Utilise "Bonjour" de 2h à 17h, "Bonsoir" de 17h à 2h
-- Pour l'Application Mobile : Utilise "un excellent après-midi" de 2h à 17h, "une excellente soirée" de 17h à 2h
-- Pour l'E-mail : Pas de "Bonjour/Bonsoir" dans la signature, mais "BP :" avant le message
-
-Génère maintenant la réponse complète et la BASE selon ce format exact.`;
+Génère maintenant UNIQUEMENT le contenu du message (sans salutation, sans signature).`;
+        }
     }
     
     async function genererAvecGemini() {
         const apiKey = document.getElementById('api_key').value.trim();
         const model = document.getElementById('model_select').value;
+        const canal = document.getElementById('canal_choix').value;
         
         if (!apiKey) {
             showStatus("❌ Veuillez configurer votre clé API (bouton ⚙️ CONFIGURATION API)", "error");
@@ -316,43 +308,75 @@ Génère maintenant la réponse complète et la BASE selon ce format exact.`;
             }
             
             const data = await response.json();
-            const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            let generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text;
             
             if (!generatedText) {
                 throw new Error("Réponse vide de l'API");
             }
             
-            const parts = generatedText.split('***');
-            let reponseClient = parts[0].trim();
-            let baseContent = parts.length >= 2 ? parts[1].trim() : "B : \n\nA : \n\nS : \n\nE : ";
+            // Nettoyer le texte généré
+            generatedText = generatedText.trim();
             
-            // Nettoyer la réponse si elle contient déjà une signature
-            const currentCanal = document.getElementById('canal_choix').value;
-            const currentSignature = getSignatureByCanalAndHour();
+            // Supprimer les éventuels "Objet :", "BP :", "Bonjour", etc. qui pourraient rester
+            generatedText = generatedText.replace(/^(Objet\s*:\s*)/i, '');
+            generatedText = generatedText.replace(/^(BP\s*:\s*)/i, '');
+            generatedText = generatedText.replace(/^(Mme\s*,?\s*)/i, '');
+            generatedText = generatedText.replace(/^(Bonjour|Bonsoir)\s*(Monsieur|Madame)?,?\s*/i, '');
+            generatedText = generatedText.replace(/^(Je reste à votre disposition.*)$/i, '');
+            generatedText = generatedText.replace(/^(Cordialement,?\s*)$/i, '');
+            generatedText = generatedText.replace(/^(Solofonirina\s*)$/i, '');
             
-            // Si la réponse ne contient pas déjà la signature, on l'ajoute
-            if (!reponseClient.includes("Cordialement") && !reponseClient.includes("Je reste à votre disposition")) {
-                reponseClient = reponseClient + "\n\n" + currentSignature;
+            // Récupérer la signature complète selon le canal et l'heure
+            const signature = getSignatureByCanalAndHour();
+            
+            // Construire la réponse complète
+            let reponseComplete = "";
+            
+            if (canal === "EMAIL") {
+                // Pour l'email, on extrait objet et BP de la signature
+                const objetMatch = signature.match(/Objet : ([^\n]*)/);
+                const objet = objetMatch ? objetMatch[1].trim() : "";
+                const bpMatch = signature.match(/BP : \n\nMme ,/);
+                
+                reponseComplete = `Objet : ${objet || "Réponse à votre demande"}\n\nBP : \n\nMme ,\n\n${generatedText}\n\nJe reste à votre disposition pour toute information complémentaire et vous souhaite de passer ${signature.includes("après-midi") ? "un excellent après-midi" : "une excellente soirée"}.\n\nCordialement,`;
+            } else {
+                // Pour l'application mobile, on utilise la salutation de la signature
+                const estApresMidi = signature.includes("après-midi");
+                const salutation = estApresMidi ? "Bonjour Monsieur," : "Bonsoir Monsieur,";
+                const momentTexte = estApresMidi ? "un excellent après-midi" : "une excellente soirée";
+                
+                reponseComplete = `${salutation}\n\n${generatedText}\n\nJe reste à votre disposition pour toute information complémentaire et vous souhaite de passer ${momentTexte}.\n\nCordialement,\n\nSolofonirina`;
             }
             
-            document.getElementById('reponse_client').value = reponseClient;
+            // Générer la BASE
+            const basePrompt = `Résume la demande suivante en une phrase pour la section BASE (B : le client demande/souhaite) :
+${dem}
+
+Génère UNIQUEMENT la phrase pour B : (sans le "B :")`;
+            
+            const baseResponse = await fetch(`https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: basePrompt }] }],
+                    generationConfig: { temperature: 0.5, maxOutputTokens: 200 }
+                })
+            });
+            
+            const baseData = await baseResponse.json();
+            let bText = baseData.candidates?.[0]?.content?.parts?.[0]?.text || "le client demande une information";
+            bText = bText.replace(/^B\s*:\s*/i, '').trim();
+            
+            const baseContent = `B : ${bText}\n\nA : \n\nS : \n\nE : n/a`;
+            
+            document.getElementById('reponse_client').value = reponseComplete;
             document.getElementById('base_area').value = baseContent;
             
             showStatus(`✅ Génération réussie avec ${model} !`, "success");
             
         } catch (error) {
             console.error('Erreur:', error);
-            let errorMsg = error.message;
-            
-            if (errorMsg.includes("API key") || errorMsg.includes("key")) {
-                errorMsg = "Clé API invalide. Vérifiez votre clé dans Configuration API.";
-            } else if (errorMsg.includes("quota")) {
-                errorMsg = "Quota API dépassé. Réessayez plus tard.";
-            } else if (errorMsg.includes("model")) {
-                errorMsg = `Le modèle "${model}" n'est pas disponible. Essayez un autre modèle.`;
-            }
-            
-            showStatus(`❌ ${errorMsg}`, "error");
+            showStatus(`❌ Erreur: ${error.message}`, "error");
         } finally {
             isGenerating = false;
         }
@@ -384,14 +408,9 @@ Génère maintenant la réponse complète et la BASE selon ce format exact.`;
         const heureMatch = d.match(/([01]?[0-9]|2[0-3])[:h][0-5][0-9]/i);
         const heureDemande = heureMatch ? heureMatch[0].replace('h', ':') : "--:--";
         
-        let reponseSansBase = r;
-        if (r.includes('***')) {
-            reponseSansBase = r.split('***')[0].trim();
-        }
-        
         const labelEntete = (canal === "EMAIL") ? `Mail Odigo du ${datePoste} à ${heureDemande}` : `AM du ${datePoste} à ${heureDemande}`;
         
-        const bloc = `${b || "B : \n\nA : \n\nS : \n\nE : "}\n\n***************************\n\n${labelEntete}\n\nRequête client :\n${d || "(non renseignée)"}\n\nRéponse apportée :\n\n${reponseSansBase || "(non renseignée)"}`;
+        const bloc = `${b || "B : \n\nA : \n\nS : \n\nE : "}\n\n***************************\n\n${labelEntete}\n\nRequête client :\n${d || "(non renseignée)"}\n\nRéponse apportée :\n\n${r || "(non renseignée)"}`;
         
         copyToClipboard(bloc);
         showStatus("📋 Historisation copiée !", "success");
