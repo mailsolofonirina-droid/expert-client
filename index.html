@@ -17,7 +17,7 @@
         
         #historique, #demande { height: 100px; }
         #instructions { flex-grow: 1; min-height: 120px; }
-        #reponse_client { flex-grow: 1; font-size: 18px; line-height: 1.5; background: #f5f7f9; border-color: #cbd8e0; min-height: 200px; }
+        #reponse_client { flex-grow: 1; font-size: 18px; line-height: 1.5; background: #f5f7f9; border-color: #cbd8e0; min-height: 200px; font-family: 'Segoe UI', Arial, sans-serif; }
 
         .btn { cursor: pointer; border: none; border-radius: 6px; padding: 10px 16px; font-weight: 500; transition: all 0.2s; margin-top: 8px; width: 100%; font-size: 0.85em; text-align: center; }
         .btn-primary { background: #6c8e9e; color: white; }
@@ -51,7 +51,8 @@
         .test-btn:hover { background: #c9a47b; }
         
         .spacer { height: 10px; }
-        .structure-preview { background: #f8fafc; border-radius: 4px; padding: 8px; font-size: 11px; color: #6c8e9e; margin-top: 5px; border-left: 2px solid #8aa0ae; }
+        .objet-input { width: 100%; padding: 8px; border: 1px solid #d0d8de; border-radius: 6px; font-size: 12px; margin-bottom: 10px; box-sizing: border-box; }
+        .objet-label { font-weight: 500; display: block; margin: 5px 0 3px 0; color: #5a6e7c; font-size: 0.85em; }
     </style>
 </head>
 <body>
@@ -66,7 +67,11 @@
             <option value="AM">📱 Application Mobile</option>
             <option value="EMAIL">✉️ E-mail</option>
         </select>
-        <div class="structure-preview" id="structurePreview"></div>
+
+        <div id="objetContainer" style="display: none;">
+            <label class="objet-label">📌 Objet :</label>
+            <input type="text" id="objet_email" class="objet-input" placeholder="Saisissez l'objet de l'e-mail...">
+        </div>
 
         <label>📜 Historique complet</label>
         <textarea id="historique" spellcheck="false" placeholder="Laisser vide si aucun historique..."></textarea>
@@ -86,10 +91,11 @@
 
     <div class="column">
         <h2>✍️ Traitement de la réponse</h2>
-        <label>Rédaction (Police 18px)</label>
+        <label>Rédaction (Police 18px) - La structure s'affiche automatiquement</label>
         <textarea id="reponse_client" spellcheck="true"></textarea>
         
         <button class="btn btn-success" onclick="copierTexte('reponse_client')">📋 COPIER LA RÉPONSE CLIENT</button>
+        <button class="btn btn-secondary" onclick="reinitialiserStructure()">🔄 RÉINITIALISER LA STRUCTURE</button>
     </div>
 
     <div class="column">
@@ -124,7 +130,6 @@
 <script>
     let isGenerating = false;
     
-    // PROMPT BASE
     const PROMPT_BASE = `Demande du client :
 
 ****************************
@@ -201,7 +206,7 @@ Transparence et Clarté : Évitez le jargon technique. Expliquez les calculs ou 
 
 Preuve d'Étude du Dossier : Pour montrer que la demande a été traitée avec soin, citez systématiquement des éléments précis (montant exact TTC, numéro de facture, dates ou index de consommation....).
 
-IMPORTANT : Ne génère PAS les salutations, formules de politesse et signature. Génère UNIQUEMENT le corps du message (le contenu principal). Les structures de salutation et signature seront ajoutées automatiquement par l'interface.
+IMPORTANT : Ne génère PAS les salutations, formules de politesse, signature, ni l'objet. Génère UNIQUEMENT le corps du message (le contenu principal). Les structures de salutation, objet, BP et signature seront ajoutées automatiquement par l'interface.
 
 Pour chaque réponse, il faut générer le BASE à la fin, séparé par "***".
 
@@ -215,7 +220,7 @@ B : résumé de la demande du client en une phrase simple >>> le client demande/
 
 (ligne vide) E : les actions possibles sur l'Espace Client/Application Mobile ou les anticipation que j'ai indiquées dans la réponse. Indiquer n/a si aucun des deux.`;
     
-    function getStructureCanal() {
+    function getStructureComplete() {
         const canal = document.getElementById('canal_choix').value;
         const now = new Date();
         const heure = now.getHours();
@@ -223,29 +228,66 @@ B : résumé de la demande du client en une phrase simple >>> le client demande/
         const momentTexte = estApresMidi ? "un excellent après-midi" : "une excellente soirée";
         
         if (canal === "EMAIL") {
+            const objet = document.getElementById('objet_email').value.trim() || "[À COMPLÉTER]";
             return {
-                salutation: "Mme ,",
+                entete: `Objet : ${objet}\n\nBP : \n\n`,
+                corps: "",
                 signature: `\n\nJe reste à votre disposition pour toute information complémentaire et vous souhaite de passer ${momentTexte}.\n\nCordialement,`
             };
         } else {
             const salutation = estApresMidi ? "Bonjour Monsieur," : "Bonsoir Monsieur,";
             return {
-                salutation: salutation,
+                entete: `${salutation}\n\n`,
+                corps: "",
                 signature: `\n\nJe reste à votre disposition pour toute information complémentaire et vous souhaite de passer ${momentTexte}.\n\nCordialement,\n\nSolofonirina`
             };
         }
     }
     
     function majStructureReponse() {
-        const structure = getStructureCanal();
-        const previewDiv = document.getElementById('structurePreview');
-        const reponseArea = document.getElementById('reponse_client');
+        const canal = document.getElementById('canal_choix').value;
+        const objetContainer = document.getElementById('objetContainer');
         
-        if (!reponseArea.value.trim()) {
-            previewDiv.innerHTML = `📄 Structure ${document.getElementById('canal_choix').value === 'EMAIL' ? 'E-mail' : 'Application Mobile'}<br>${structure.salutation}<br>[CORPS DU MESSAGE]<br>${structure.signature.replace(/\n/g, '<br>')}`;
+        if (canal === "EMAIL") {
+            objetContainer.style.display = "block";
         } else {
-            previewDiv.innerHTML = `📄 Structure ${document.getElementById('canal_choix').value === 'EMAIL' ? 'E-mail' : 'Application Mobile'}`;
+            objetContainer.style.display = "none";
         }
+        
+        // Réinitialiser la structure avec le corps actuel conservé
+        const reponseArea = document.getElementById('reponse_client');
+        const currentContent = reponseArea.value;
+        const structure = getStructureComplete();
+        
+        // Extraire le corps actuel (si la structure existe déjà)
+        let corpsActuel = "";
+        if (canal === "EMAIL") {
+            const matchObjet = currentContent.match(/Objet\s*:\s*[^\n]*\n\nBP\s*:\s*\n\n([\s\S]*?)(?=\n\nJe reste à votre disposition|\n\nCordialement,|$)/);
+            if (matchObjet) {
+                corpsActuel = matchObjet[1].trim();
+            } else {
+                corpsActuel = currentContent;
+            }
+        } else {
+            const matchSalutation = currentContent.match(/(?:Bonjour|Bonsoir)[^,]*,?\n\n([\s\S]*?)(?=\n\nJe reste à votre disposition|\n\nCordialement,|$)/);
+            if (matchSalutation) {
+                corpsActuel = matchSalutation[1].trim();
+            } else {
+                corpsActuel = currentContent;
+            }
+        }
+        
+        if (corpsActuel && !corpsActuel.includes('Objet :') && !corpsActuel.includes('Bonjour') && !corpsActuel.includes('Bonsoir')) {
+            reponseArea.value = structure.entete + corpsActuel + structure.signature;
+        } else if (!corpsActuel || corpsActuel === currentContent) {
+            reponseArea.value = structure.entete + structure.signature;
+        }
+    }
+    
+    function reinitialiserStructure() {
+        const structure = getStructureComplete();
+        document.getElementById('reponse_client').value = structure.entete + structure.signature;
+        showStatus("✅ Structure réinitialisée", "success");
     }
     
     function toggleConfigPanel() {
@@ -296,7 +338,7 @@ B : résumé de la demande du client en une phrase simple >>> le client demande/
             throw new Error("Veuillez saisir une demande client à traiter.");
         }
         
-        return `${PROMPT_BASE}\n\n****************************\nHISTORIQUE :\n${hist || "Aucun historique"}\n\nDEMANDE CLIENT :\n${dem}\n\nINSTRUCTIONS COMPLÉMENTAIRES :\n${inst || "Aucune instruction spécifique"}\n\n************************************\nGénère maintenant UNIQUEMENT le corps du message (sans salutation, ni formule de politesse, ni signature), suivi de "***" et du BASE.`;
+        return `${PROMPT_BASE}\n\n****************************\nHISTORIQUE :\n${hist || "Aucun historique"}\n\nDEMANDE CLIENT :\n${dem}\n\nINSTRUCTIONS COMPLÉMENTAIRES :\n${inst || "Aucune instruction spécifique"}\n\n************************************\nGénère maintenant UNIQUEMENT le corps du message (sans salutation, ni formule de politesse, ni signature, ni objet, ni BP), suivi de "***" et du BASE.`;
     }
     
     async function genererAvecGemini() {
@@ -350,7 +392,6 @@ B : résumé de la demande du client en une phrase simple >>> le client demande/
                 throw new Error("Réponse vide de l'API");
             }
             
-            // Extraire le corps du message et la BASE
             let corpsMessage = "";
             let baseContent = "";
             
@@ -359,7 +400,6 @@ B : résumé de la demande du client en une phrase simple >>> le client demande/
                 corpsMessage = parts[0].trim();
                 baseContent = parts[1].trim();
             } else {
-                // Chercher la section BASE autrement
                 const baseMatch = generatedText.match(/(B\s*:[\s\S]*)/i);
                 if (baseMatch) {
                     const baseIndex = generatedText.indexOf(baseMatch[0]);
@@ -371,9 +411,8 @@ B : résumé de la demande du client en une phrase simple >>> le client demande/
                 }
             }
             
-            // Ajouter la structure complète avec salutation et signature
-            const structure = getStructureCanal();
-            const reponseComplete = `${structure.salutation}\n\n${corpsMessage}${structure.signature}`;
+            const structure = getStructureComplete();
+            const reponseComplete = structure.entete + corpsMessage + structure.signature;
             
             document.getElementById('reponse_client').value = reponseComplete;
             document.getElementById('base_area').value = baseContent || "B : \n\nA : \n\nS : \n\nE : n/a";
@@ -445,10 +484,11 @@ B : résumé de la demande du client en une phrase simple >>> le client demande/
     
     function toutVider() {
         if(confirm("Effacer tous les champs ?")) {
-            ['historique', 'demande', 'instructions', 'base_area', 'reponse_client'].forEach(id => {
-                document.getElementById(id).value = "";
+            ['historique', 'demande', 'instructions', 'base_area', 'reponse_client', 'objet_email'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = "";
             });
-            majStructureReponse();
+            reinitialiserStructure();
             showStatus("✅ Tout a été vidé", "success");
         }
     }
@@ -468,6 +508,11 @@ B : résumé de la demande du client en une phrase simple >>> le client demande/
         localStorage.setItem('canal_choix', canal);
     }
     
+    function sauvegarderObjet() {
+        const objet = document.getElementById('objet_email').value;
+        localStorage.setItem('objet_email', objet);
+    }
+    
     function chargerDonnees() {
         const savedKey = localStorage.getItem('gemini_api_key');
         if (savedKey) document.getElementById('api_key').value = savedKey;
@@ -475,6 +520,8 @@ B : résumé de la demande du client en une phrase simple >>> le client demande/
         if (savedModel) document.getElementById('model_select').value = savedModel;
         const savedCanal = localStorage.getItem('canal_choix');
         if (savedCanal) document.getElementById('canal_choix').value = savedCanal;
+        const savedObjet = localStorage.getItem('objet_email');
+        if (savedObjet) document.getElementById('objet_email').value = savedObjet;
     }
     
     document.addEventListener('DOMContentLoaded', () => {
@@ -485,6 +532,11 @@ B : résumé de la demande du client en une phrase simple >>> le client demande/
         document.getElementById('api_key').addEventListener('blur', sauvegarderCleApi);
         document.getElementById('model_select').addEventListener('change', sauvegarderModele);
         document.getElementById('canal_choix').addEventListener('change', sauvegarderCanal);
+        document.getElementById('objet_email').addEventListener('change', sauvegarderObjet);
+        document.getElementById('objet_email').addEventListener('blur', () => {
+            sauvegarderObjet();
+            majStructureReponse();
+        });
         
         ['historique', 'demande', 'instructions'].forEach(id => {
             document.getElementById(id).addEventListener('keydown', (e) => {
@@ -495,7 +547,7 @@ B : résumé de la demande du client en une phrase simple >>> le client demande/
             });
         });
         
-        showStatus("✅ Prêt ! Cliquez sur '⚙️ CONFIGURATION API' pour configurer Gemini", "success");
+        showStatus("✅ Prêt ! La structure s'affiche automatiquement dans le champ de traitement", "success");
     });
 </script>
 
