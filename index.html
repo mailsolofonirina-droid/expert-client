@@ -51,6 +51,7 @@
         .test-btn:hover { background: #c9a47b; }
         
         .spacer { height: 10px; }
+        .structure-preview { background: #f8fafc; border-radius: 4px; padding: 8px; font-size: 11px; color: #6c8e9e; margin-top: 5px; border-left: 2px solid #8aa0ae; }
     </style>
 </head>
 <body>
@@ -61,10 +62,11 @@
         <h2>📋 Préparation</h2>
         
         <label>📱 Canal de traitement</label>
-        <select id="canal_choix" onchange="majSignature()">
+        <select id="canal_choix" onchange="majStructureReponse()">
             <option value="AM">📱 Application Mobile</option>
             <option value="EMAIL">✉️ E-mail</option>
         </select>
+        <div class="structure-preview" id="structurePreview"></div>
 
         <label>📜 Historique complet</label>
         <textarea id="historique" spellcheck="false" placeholder="Laisser vide si aucun historique..."></textarea>
@@ -122,7 +124,7 @@
 <script>
     let isGenerating = false;
     
-    // PROMPT COMPLET - INTEGRAL
+    // PROMPT BASE
     const PROMPT_BASE = `Demande du client :
 
 ****************************
@@ -139,7 +141,6 @@ Ton : Adoptez un ton chaleureux, rassurant et pédagogue.
 
 La première phrase doit fusionner l'accueil et la prise en charge en adaptant le ton à l'émotion ou à la situation exprimée par le client. Vous devez varier vos formulations pour refléter précisément l'objet du message (regret pour un désagrément, apport de clarté pour un doute ou accompagnement pour une démarche) afin d'éviter toute répétition automatique.
 
-
 2. Articulation et fluidité :
 
 Rédaction naturelle, sans exagération des connecteurs logiques. Séparez chaque idée par un paragraphe distinct.
@@ -148,7 +149,6 @@ Rédaction naturelle, sans exagération des connecteurs logiques. Séparez chaqu
 
 Format : Texte simple (e-mail), sans listes à puces ni tirets (sauf pour la section BASE).
 
-
 Personnalisation : Utilisez le "je" pour vos actions et le "nous" pour représenter TotalEnergies.
 
 Syntaxes obligatoires : Utilisez le mode déclaratif. Pour les actions attendues du client, utilisez des formes de courtoisie (Ex : "Je vous invite à", "je vous prie de").
@@ -156,7 +156,6 @@ Syntaxes obligatoires : Utilisez le mode déclaratif. Pour les actions attendues
 Chiffres et Unités : Écrivez les nombres en chiffres (ex: 2 jours, 150 €). Utilisez strictement les unités : €, kWh, kVA.
 
 Format des Dates : Toutes les dates doivent être rédigées au format "jour mois année" avec le mois écrit en lettres (ex : 5 mars 2026). L'utilisation de barres obliques (/) pour les dates est interdite.
-
 
 Temps : Utilisez le futur simple pour les actions à venir (ex: "Je ferai").
 
@@ -177,7 +176,6 @@ Respecter la ponctuation : virgule (,) en fin de ligne si incomplet, point (.) s
 
 Le nom du client, prénom du client, adresse du client doivent être au majuscule
 sur la civilité : seul l'initial est au majuscule (Madame/Monsieur)
-
 
 Majuscules systématiques : Les noms des services internes doivent toujours porter une majuscule sur chaque initiale (ex: Service Technique, Service Déménagement....).
 
@@ -203,23 +201,52 @@ Transparence et Clarté : Évitez le jargon technique. Expliquez les calculs ou 
 
 Preuve d'Étude du Dossier : Pour montrer que la demande a été traitée avec soin, citez systématiquement des éléments précis (montant exact TTC, numéro de facture, dates ou index de consommation....).
 
-Redige juste le cors de message ou e-mail 
+IMPORTANT : Ne génère PAS les salutations, formules de politesse et signature. Génère UNIQUEMENT le corps du message (le contenu principal). Les structures de salutation et signature seront ajoutées automatiquement par l'interface.
 
-La salutation et la phrase verouillage suit la structure du canal choisi
+Pour chaque réponse, il faut générer le BASE à la fin, séparé par "***".
 
-Pour chaque, il faut rediger le BASE
-
-(BASE : Format Stricte)
+BASE : Format Stricte
 
 B : résumé de la demande du client en une phrase simple >>> le client demande/souhaite
 
 (ligne vide) A : informations factuelles et précises constatées sur le dossier du client après vérification. Si aucune information spécifique au dossier ne correspond à l'analyse, cette ligne doit rester vide.
 
-
 (ligne vide) S : résumé clair de la solution ou information apportée en utilisant "j'ai informé/fait/proposé/expliqué"
 
-
-(ligne vide) E :  les actions possibles sur l'Espace Client/Application Mobile ou les anticipation que j'ai indiquées dans la réponse. Indiquer n/a si aucun des deux.`;
+(ligne vide) E : les actions possibles sur l'Espace Client/Application Mobile ou les anticipation que j'ai indiquées dans la réponse. Indiquer n/a si aucun des deux.`;
+    
+    function getStructureCanal() {
+        const canal = document.getElementById('canal_choix').value;
+        const now = new Date();
+        const heure = now.getHours();
+        const estApresMidi = (heure >= 2 && heure < 17);
+        const momentTexte = estApresMidi ? "un excellent après-midi" : "une excellente soirée";
+        
+        if (canal === "EMAIL") {
+            return {
+                salutation: "Mme ,",
+                signature: `\n\nJe reste à votre disposition pour toute information complémentaire et vous souhaite de passer ${momentTexte}.\n\nCordialement,`
+            };
+        } else {
+            const salutation = estApresMidi ? "Bonjour Monsieur," : "Bonsoir Monsieur,";
+            return {
+                salutation: salutation,
+                signature: `\n\nJe reste à votre disposition pour toute information complémentaire et vous souhaite de passer ${momentTexte}.\n\nCordialement,\n\nSolofonirina`
+            };
+        }
+    }
+    
+    function majStructureReponse() {
+        const structure = getStructureCanal();
+        const previewDiv = document.getElementById('structurePreview');
+        const reponseArea = document.getElementById('reponse_client');
+        
+        if (!reponseArea.value.trim()) {
+            previewDiv.innerHTML = `📄 Structure ${document.getElementById('canal_choix').value === 'EMAIL' ? 'E-mail' : 'Application Mobile'}<br>${structure.salutation}<br>[CORPS DU MESSAGE]<br>${structure.signature.replace(/\n/g, '<br>')}`;
+        } else {
+            previewDiv.innerHTML = `📄 Structure ${document.getElementById('canal_choix').value === 'EMAIL' ? 'E-mail' : 'Application Mobile'}`;
+        }
+    }
     
     function toggleConfigPanel() {
         const panel = document.getElementById('configPanel');
@@ -240,36 +267,12 @@ B : résumé de la demande du client en une phrase simple >>> le client demande/
             const data = await response.json();
             
             if (response.ok) {
-                const models = data.models || [];
-                const modelNames = models.map(m => m.name.replace('models/', '')).join(', ');
-                showStatus(`✅ Clé valide ! Modèles disponibles : ${modelNames.substring(0, 150)}...`, "success");
+                showStatus(`✅ Clé valide !`, "success");
             } else {
                 showStatus(`❌ Clé invalide: ${data.error?.message || 'Erreur inconnue'}`, "error");
             }
         } catch (error) {
             showStatus(`❌ Erreur: ${error.message}`, "error");
-        }
-    }
-    
-    function getSignatureByCanalAndHour() {
-        const canal = document.getElementById('canal_choix').value;
-        const now = new Date();
-        const heure = now.getHours();
-        const estApresMidi = (heure >= 2 && heure < 17);
-        const momentTexte = estApresMidi ? "un excellent après-midi" : "une excellente soirée";
-        
-        if (canal === "EMAIL") {
-            return `Objet : \n\nBP : \n\nMme ,\n\n\nJe reste à votre disposition pour toute information complémentaire et vous souhaite de passer ${momentTexte}.\n\nCordialement,`;
-        } else {
-            const salutation = estApresMidi ? "Bonjour Monsieur," : "Bonsoir Monsieur,";
-            return `${salutation}\n\n\nJe reste à votre disposition pour toute information complémentaire et vous souhaite de passer ${momentTexte}.\n\nCordialement,\n\nSolofonirina`;
-        }
-    }
-    
-    function majSignature() {
-        const reponseArea = document.getElementById('reponse_client');
-        if (!reponseArea.value.trim()) {
-            reponseArea.value = getSignatureByCanalAndHour();
         }
     }
     
@@ -288,18 +291,12 @@ B : résumé de la demande du client en une phrase simple >>> le client demande/
         const hist = document.getElementById('historique').value.trim();
         const dem = document.getElementById('demande').value.trim();
         const inst = document.getElementById('instructions').value.trim();
-        const canal = document.getElementById('canal_choix').value;
         
         if (!dem) {
             throw new Error("Veuillez saisir une demande client à traiter.");
         }
         
-        // Ajout des instructions spécifiques au canal
-        const instructionsCanal = canal === "EMAIL" 
-            ? `\n\nINSTRUCTION CANAL E-MAIL :\n- Rédige une réponse complète avec Objet, BP, corps du message, formule de politesse et signature.\n- Structure : Objet: [objet]\\n\\nBP : \\n\\nMme [PRENOM],\\n\\n[corps]\\n\\nJe reste à votre disposition...\\n\\nCordialement,`
-            : `\n\nINSTRUCTION CANAL APPLICATION MOBILE :\n- Rédige une réponse complète avec salutation, corps du message, formule de politesse et signature.\n- Structure : Bonjour/Bonsoir Monsieur,\\n\\n[corps]\\n\\nJe reste à votre disposition...\\n\\nCordialement,\\n\\nSolofonirina\n- Adapte "Bonjour" ou "Bonsoir" selon l'heure (Bonjour de 2h à 17h, Bonsoir de 17h à 2h).\n- Adapte "un excellent après-midi" ou "une excellente soirée" selon l'heure.`;
-        
-        return `${PROMPT_BASE}\n\n****************************\nHISTORIQUE :\n${hist || "Aucun historique"}\n\nDEMANDE CLIENT :\n${dem}\n\nINSTRUCTIONS COMPLÉMENTAIRES :\n${inst || "Aucune instruction spécifique"}${instructionsCanal}\n\n************************************\nGénère maintenant la réponse complète avec la structure appropriée pour le canal sélectionné.`;
+        return `${PROMPT_BASE}\n\n****************************\nHISTORIQUE :\n${hist || "Aucun historique"}\n\nDEMANDE CLIENT :\n${dem}\n\nINSTRUCTIONS COMPLÉMENTAIRES :\n${inst || "Aucune instruction spécifique"}\n\n************************************\nGénère maintenant UNIQUEMENT le corps du message (sans salutation, ni formule de politesse, ni signature), suivi de "***" et du BASE.`;
     }
     
     async function genererAvecGemini() {
@@ -353,25 +350,32 @@ B : résumé de la demande du client en une phrase simple >>> le client demande/
                 throw new Error("Réponse vide de l'API");
             }
             
-            // Extraire la réponse et la BASE
-            let reponseClient = generatedText;
+            // Extraire le corps du message et la BASE
+            let corpsMessage = "";
             let baseContent = "";
             
             if (generatedText.includes('***')) {
                 const parts = generatedText.split('***');
-                reponseClient = parts[0].trim();
+                corpsMessage = parts[0].trim();
                 baseContent = parts[1].trim();
             } else {
                 // Chercher la section BASE autrement
                 const baseMatch = generatedText.match(/(B\s*:[\s\S]*)/i);
                 if (baseMatch) {
                     const baseIndex = generatedText.indexOf(baseMatch[0]);
-                    reponseClient = generatedText.substring(0, baseIndex).trim();
+                    corpsMessage = generatedText.substring(0, baseIndex).trim();
                     baseContent = baseMatch[0].trim();
+                } else {
+                    corpsMessage = generatedText.trim();
+                    baseContent = "B : \n\nA : \n\nS : \n\nE : n/a";
                 }
             }
             
-            document.getElementById('reponse_client').value = reponseClient;
+            // Ajouter la structure complète avec salutation et signature
+            const structure = getStructureCanal();
+            const reponseComplete = `${structure.salutation}\n\n${corpsMessage}${structure.signature}`;
+            
+            document.getElementById('reponse_client').value = reponseComplete;
             document.getElementById('base_area').value = baseContent || "B : \n\nA : \n\nS : \n\nE : n/a";
             
             showStatus(`✅ Génération réussie avec ${model} !`, "success");
@@ -441,10 +445,10 @@ B : résumé de la demande du client en une phrase simple >>> le client demande/
     
     function toutVider() {
         if(confirm("Effacer tous les champs ?")) {
-            ['historique', 'demande', 'instructions', 'base_area'].forEach(id => {
+            ['historique', 'demande', 'instructions', 'base_area', 'reponse_client'].forEach(id => {
                 document.getElementById(id).value = "";
             });
-            majSignature();
+            majStructureReponse();
             showStatus("✅ Tout a été vidé", "success");
         }
     }
@@ -475,7 +479,7 @@ B : résumé de la demande du client en une phrase simple >>> le client demande/
     
     document.addEventListener('DOMContentLoaded', () => {
         chargerDonnees();
-        majSignature();
+        majStructureReponse();
         
         document.getElementById('api_key').addEventListener('change', sauvegarderCleApi);
         document.getElementById('api_key').addEventListener('blur', sauvegarderCleApi);
