@@ -51,8 +51,6 @@
         .test-btn:hover { background: #c9a47b; }
         
         .spacer { height: 10px; }
-        .objet-input { width: 100%; padding: 8px; border: 1px solid #d0d8de; border-radius: 6px; font-size: 12px; margin-bottom: 10px; box-sizing: border-box; }
-        .objet-label { font-weight: 500; display: block; margin: 5px 0 3px 0; color: #5a6e7c; font-size: 0.85em; }
     </style>
 </head>
 <body>
@@ -67,11 +65,6 @@
             <option value="AM">📱 Application Mobile</option>
             <option value="EMAIL">✉️ E-mail</option>
         </select>
-
-        <div id="objetContainer" style="display: none;">
-            <label class="objet-label">📌 Objet :</label>
-            <input type="text" id="objet_email" class="objet-input" placeholder="Saisissez l'objet de l'e-mail...">
-        </div>
 
         <label>📜 Historique complet</label>
         <textarea id="historique" spellcheck="false" placeholder="Laisser vide si aucun historique..."></textarea>
@@ -206,7 +199,10 @@ Transparence et Clarté : Évitez le jargon technique. Expliquez les calculs ou 
 
 Preuve d'Étude du Dossier : Pour montrer que la demande a été traitée avec soin, citez systématiquement des éléments précis (montant exact TTC, numéro de facture, dates ou index de consommation....).
 
-IMPORTANT : Ne génère PAS les salutations, formules de politesse, signature, ni l'objet. Génère UNIQUEMENT le corps du message (le contenu principal). Les structures de salutation, objet, BP et signature seront ajoutées automatiquement par l'interface.
+IMPORTANT : 
+- Pour le canal EMAIL : Génère UNIQUEMENT l'OBJET et le CORPS du message. L'objet doit être concis et précis. Le corps est le contenu principal du message.
+- Pour le canal AM (Application Mobile) : Génère UNIQUEMENT le CORPS du message.
+- Ne génère PAS les salutations, formules de politesse, signature, BP, ni "Mme,". Ces éléments seront ajoutés automatiquement par l'interface.
 
 Pour chaque réponse, il faut générer le BASE à la fin, séparé par "***".
 
@@ -228,9 +224,8 @@ B : résumé de la demande du client en une phrase simple >>> le client demande/
         const momentTexte = estApresMidi ? "un excellent après-midi" : "une excellente soirée";
         
         if (canal === "EMAIL") {
-            const objet = document.getElementById('objet_email').value.trim() || "[À COMPLÉTER]";
             return {
-                entete: `Objet : ${objet}\n\nBP : \n\n`,
+                entete: `Objet : [OBJET_A_REMPLACER]\n\nBP : \n\nMme ,\n\n`,
                 corps: "",
                 signature: `\n\nJe reste à votre disposition pour toute information complémentaire et vous souhaite de passer ${momentTexte}.\n\nCordialement,`
             };
@@ -245,42 +240,23 @@ B : résumé de la demande du client en une phrase simple >>> le client demande/
     }
     
     function majStructureReponse() {
-        const canal = document.getElementById('canal_choix').value;
-        const objetContainer = document.getElementById('objetContainer');
-        
-        if (canal === "EMAIL") {
-            objetContainer.style.display = "block";
-        } else {
-            objetContainer.style.display = "none";
-        }
-        
-        // Réinitialiser la structure avec le corps actuel conservé
         const reponseArea = document.getElementById('reponse_client');
         const currentContent = reponseArea.value;
+        const canal = document.getElementById('canal_choix').value;
         const structure = getStructureComplete();
         
-        // Extraire le corps actuel (si la structure existe déjà)
-        let corpsActuel = "";
         if (canal === "EMAIL") {
-            const matchObjet = currentContent.match(/Objet\s*:\s*[^\n]*\n\nBP\s*:\s*\n\n([\s\S]*?)(?=\n\nJe reste à votre disposition|\n\nCordialement,|$)/);
-            if (matchObjet) {
-                corpsActuel = matchObjet[1].trim();
-            } else {
-                corpsActuel = currentContent;
+            // Vérifier si le contenu actuel a déjà la structure email
+            const hasEmailStructure = currentContent.includes('Objet :') && currentContent.includes('BP :') && currentContent.includes('Mme ,');
+            if (!hasEmailStructure || !currentContent.trim()) {
+                reponseArea.value = structure.entete + structure.signature;
             }
         } else {
-            const matchSalutation = currentContent.match(/(?:Bonjour|Bonsoir)[^,]*,?\n\n([\s\S]*?)(?=\n\nJe reste à votre disposition|\n\nCordialement,|$)/);
-            if (matchSalutation) {
-                corpsActuel = matchSalutation[1].trim();
-            } else {
-                corpsActuel = currentContent;
+            // Vérifier si le contenu actuel a déjà la structure mobile
+            const hasMobileStructure = (currentContent.includes('Bonjour') || currentContent.includes('Bonsoir')) && currentContent.includes('Je reste à votre disposition');
+            if (!hasMobileStructure || !currentContent.trim()) {
+                reponseArea.value = structure.entete + structure.signature;
             }
-        }
-        
-        if (corpsActuel && !corpsActuel.includes('Objet :') && !corpsActuel.includes('Bonjour') && !corpsActuel.includes('Bonsoir')) {
-            reponseArea.value = structure.entete + corpsActuel + structure.signature;
-        } else if (!corpsActuel || corpsActuel === currentContent) {
-            reponseArea.value = structure.entete + structure.signature;
         }
     }
     
@@ -288,6 +264,13 @@ B : résumé de la demande du client en une phrase simple >>> le client demande/
         const structure = getStructureComplete();
         document.getElementById('reponse_client').value = structure.entete + structure.signature;
         showStatus("✅ Structure réinitialisée", "success");
+    }
+    
+    function remplacerObjetDansStructure(objet) {
+        const reponseArea = document.getElementById('reponse_client');
+        let content = reponseArea.value;
+        content = content.replace(/Objet : \[OBJET_A_REMPLACER\]/, `Objet : ${objet}`);
+        reponseArea.value = content;
     }
     
     function toggleConfigPanel() {
@@ -333,17 +316,29 @@ B : résumé de la demande du client en une phrase simple >>> le client demande/
         const hist = document.getElementById('historique').value.trim();
         const dem = document.getElementById('demande').value.trim();
         const inst = document.getElementById('instructions').value.trim();
+        const canal = document.getElementById('canal_choix').value;
         
         if (!dem) {
             throw new Error("Veuillez saisir une demande client à traiter.");
         }
         
-        return `${PROMPT_BASE}\n\n****************************\nHISTORIQUE :\n${hist || "Aucun historique"}\n\nDEMANDE CLIENT :\n${dem}\n\nINSTRUCTIONS COMPLÉMENTAIRES :\n${inst || "Aucune instruction spécifique"}\n\n************************************\nGénère maintenant UNIQUEMENT le corps du message (sans salutation, ni formule de politesse, ni signature, ni objet, ni BP), suivi de "***" et du BASE.`;
+        let instructionCanal = "";
+        if (canal === "EMAIL") {
+            instructionCanal = `\n\nINSTRUCTION CANAL EMAIL : Génère d'abord l'OBJET sur une ligne, puis le CORPS du message. Sépare l'objet du corps par un saut de ligne. Format attendu :
+Objet: [votre objet ici]
+
+[corps du message]`;
+        } else {
+            instructionCanal = `\n\nINSTRUCTION CANAL APPLICATION MOBILE : Génère uniquement le CORPS du message (sans salutation, ni signature).`;
+        }
+        
+        return `${PROMPT_BASE}\n\n****************************\nHISTORIQUE :\n${hist || "Aucun historique"}\n\nDEMANDE CLIENT :\n${dem}\n\nINSTRUCTIONS COMPLÉMENTAIRES :\n${inst || "Aucune instruction spécifique"}${instructionCanal}\n\n************************************\nGénère maintenant la réponse selon les instructions du canal, suivie de "***" et du BASE.`;
     }
     
     async function genererAvecGemini() {
         const apiKey = document.getElementById('api_key').value.trim();
         const model = document.getElementById('model_select').value;
+        const canal = document.getElementById('canal_choix').value;
         
         if (!apiKey) {
             showStatus("❌ Veuillez configurer votre clé API (bouton ⚙️ CONFIGURATION API)", "error");
@@ -392,27 +387,68 @@ B : résumé de la demande du client en une phrase simple >>> le client demande/
                 throw new Error("Réponse vide de l'API");
             }
             
+            let objet = "";
             let corpsMessage = "";
             let baseContent = "";
             
-            if (generatedText.includes('***')) {
-                const parts = generatedText.split('***');
-                corpsMessage = parts[0].trim();
-                baseContent = parts[1].trim();
-            } else {
-                const baseMatch = generatedText.match(/(B\s*:[\s\S]*)/i);
-                if (baseMatch) {
-                    const baseIndex = generatedText.indexOf(baseMatch[0]);
-                    corpsMessage = generatedText.substring(0, baseIndex).trim();
-                    baseContent = baseMatch[0].trim();
+            if (canal === "EMAIL") {
+                // Extraire l'objet
+                const objetMatch = generatedText.match(/Objet\s*:\s*(.+?)(?:\n|$)/i);
+                if (objetMatch) {
+                    objet = objetMatch[1].trim();
+                    // Supprimer la ligne d'objet du texte pour extraire le corps
+                    let tempText = generatedText.replace(/Objet\s*:\s*.+?(?:\n|$)/i, '');
+                    // Séparer corps et BASE
+                    if (tempText.includes('***')) {
+                        const parts = tempText.split('***');
+                        corpsMessage = parts[0].trim();
+                        baseContent = parts[1].trim();
+                    } else {
+                        const baseMatch = tempText.match(/(B\s*:[\s\S]*)/i);
+                        if (baseMatch) {
+                            const baseIndex = tempText.indexOf(baseMatch[0]);
+                            corpsMessage = tempText.substring(0, baseIndex).trim();
+                            baseContent = baseMatch[0].trim();
+                        } else {
+                            corpsMessage = tempText.trim();
+                            baseContent = "B : \n\nA : \n\nS : \n\nE : n/a";
+                        }
+                    }
                 } else {
                     corpsMessage = generatedText.trim();
                     baseContent = "B : \n\nA : \n\nS : \n\nE : n/a";
                 }
+            } else {
+                // Canal Mobile - extraire seulement le corps
+                if (generatedText.includes('***')) {
+                    const parts = generatedText.split('***');
+                    corpsMessage = parts[0].trim();
+                    baseContent = parts[1].trim();
+                } else {
+                    const baseMatch = generatedText.match(/(B\s*:[\s\S]*)/i);
+                    if (baseMatch) {
+                        const baseIndex = generatedText.indexOf(baseMatch[0]);
+                        corpsMessage = generatedText.substring(0, baseIndex).trim();
+                        baseContent = baseMatch[0].trim();
+                    } else {
+                        corpsMessage = generatedText.trim();
+                        baseContent = "B : \n\nA : \n\nS : \n\nE : n/a";
+                    }
+                }
             }
             
             const structure = getStructureComplete();
-            const reponseComplete = structure.entete + corpsMessage + structure.signature;
+            let reponseComplete;
+            
+            if (canal === "EMAIL") {
+                if (objet) {
+                    reponseComplete = `Objet : ${objet}\n\nBP : \n\nMme ,\n\n${corpsMessage}${structure.signature}`;
+                } else {
+                    reponseComplete = structure.entete + corpsMessage + structure.signature;
+                }
+            } else {
+                reponseComplete = structure.entete + corpsMessage + structure.signature;
+            }
             
             document.getElementById('reponse_client').value = reponseComplete;
             document.getElementById('base_area').value = baseContent || "B : \n\nA : \n\nS : \n\nE : n/a";
@@ -484,7 +520,7 @@ B : résumé de la demande du client en une phrase simple >>> le client demande/
     
     function toutVider() {
         if(confirm("Effacer tous les champs ?")) {
-            ['historique', 'demande', 'instructions', 'base_area', 'reponse_client', 'objet_email'].forEach(id => {
+            ['historique', 'demande', 'instructions', 'base_area', 'reponse_client'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.value = "";
             });
@@ -508,11 +544,6 @@ B : résumé de la demande du client en une phrase simple >>> le client demande/
         localStorage.setItem('canal_choix', canal);
     }
     
-    function sauvegarderObjet() {
-        const objet = document.getElementById('objet_email').value;
-        localStorage.setItem('objet_email', objet);
-    }
-    
     function chargerDonnees() {
         const savedKey = localStorage.getItem('gemini_api_key');
         if (savedKey) document.getElementById('api_key').value = savedKey;
@@ -520,8 +551,6 @@ B : résumé de la demande du client en une phrase simple >>> le client demande/
         if (savedModel) document.getElementById('model_select').value = savedModel;
         const savedCanal = localStorage.getItem('canal_choix');
         if (savedCanal) document.getElementById('canal_choix').value = savedCanal;
-        const savedObjet = localStorage.getItem('objet_email');
-        if (savedObjet) document.getElementById('objet_email').value = savedObjet;
     }
     
     document.addEventListener('DOMContentLoaded', () => {
@@ -532,11 +561,6 @@ B : résumé de la demande du client en une phrase simple >>> le client demande/
         document.getElementById('api_key').addEventListener('blur', sauvegarderCleApi);
         document.getElementById('model_select').addEventListener('change', sauvegarderModele);
         document.getElementById('canal_choix').addEventListener('change', sauvegarderCanal);
-        document.getElementById('objet_email').addEventListener('change', sauvegarderObjet);
-        document.getElementById('objet_email').addEventListener('blur', () => {
-            sauvegarderObjet();
-            majStructureReponse();
-        });
         
         ['historique', 'demande', 'instructions'].forEach(id => {
             document.getElementById(id).addEventListener('keydown', (e) => {
@@ -547,7 +571,7 @@ B : résumé de la demande du client en une phrase simple >>> le client demande/
             });
         });
         
-        showStatus("✅ Prêt ! La structure s'affiche automatiquement dans le champ de traitement", "success");
+        showStatus("✅ Prêt ! La structure s'affiche automatiquement. L'objet email est généré par l'IA.", "success");
     });
 </script>
 
