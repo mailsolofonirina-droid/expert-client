@@ -4,18 +4,20 @@
     <meta charset="UTF-8">
     <title>Interface Expert Relation Client - Solofonirina (Gemini IA)</title>
     <style>
+        * { box-sizing: border-box; }
         body { font-family: 'Segoe UI', Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 15px; font-size: 12px; color: #333; }
-        .wrapper { display: grid; grid-template-columns: 0.8fr 2.4fr 0.8fr; gap: 15px; height: 95vh; max-width: 1600px; margin: 0 auto; }
+        .wrapper { display: grid; grid-template-columns: 0.9fr 2.4fr 0.9fr; gap: 15px; height: 95vh; max-width: 1800px; margin: 0 auto; }
         .column { background: #ffffff; border-radius: 8px; display: flex; flex-direction: column; padding: 15px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        h2 { font-size: 0.9em; color: #2c3e50; margin-top: 0; border-bottom: 2px solid #3498db; padding-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+        h2 { font-size: 0.9em; color: #2c3e50; margin-top: 0; border-bottom: 2px solid #3498db; padding-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 10px; justify-content: space-between; }
+        h2 select { font-size: 0.8em; padding: 4px 8px; border-radius: 6px; border: 1px solid #ddd; background: white; }
         label { font-weight: bold; display: block; margin: 8px 0 3px 0; color: #555; font-size: 0.85em; }
         
         textarea { width: 100%; border: 1px solid #ddd; border-radius: 6px; padding: 10px; box-sizing: border-box; font-family: inherit; resize: none; background: #fff; font-size: 12px; transition: border 0.2s; }
         textarea:focus { outline: none; border-color: #3498db; box-shadow: 0 0 0 2px rgba(52,152,219,0.1); }
         
-        #historique { height: 100px; }
-        #demande { height: 100px; }
-        #instructions { flex-grow: 1; min-height: 150px; }
+        #historique { height: 80px; }
+        #demande { height: 120px; }
+        #instructions { flex-grow: 1; min-height: 120px; }
         #reponse_client { flex-grow: 1; font-size: 18px; line-height: 1.5; background: #fef9e6; border-color: #f39c12; min-height: 200px; }
 
         .btn { cursor: pointer; border: none; border-radius: 6px; padding: 10px 16px; font-weight: 600; transition: all 0.2s; margin-top: 8px; width: 100%; font-size: 0.85em; text-align: center; }
@@ -29,6 +31,8 @@
         .btn-secondary:hover { background: #7f8c8d; }
         .btn-vider { background: #ecf0f1; color: #7f8c8d; border: 1px solid #bdc3c7; }
         .btn-vider:hover { background: #bdc3c7; color: white; }
+        .btn-upload { background: #9b59b6; color: white; margin-top: 5px; padding: 6px; font-size: 0.75em; }
+        .btn-upload:hover { background: #8e44ad; }
         
         .btn-group { display: flex; gap: 8px; margin-top: 10px; }
         .btn-group .btn { margin-top: 0; }
@@ -41,13 +45,20 @@
         .loading { display: inline-block; width: 14px; height: 14px; border: 2px solid #f3f3f3; border-top: 2px solid #3498db; border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 8px; vertical-align: middle; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
-        .api-config { background: #f8f9fa; border-radius: 6px; padding: 8px; margin-bottom: 10px; font-size: 11px; }
-        .api-config input { width: calc(100% - 16px); padding: 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 11px; margin-top: 4px; }
-        .model-select { width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 11px; margin-top: 4px; background: white; }
-        .info-text { font-size: 11px; color: #7f8c8d; margin-top: 5px; text-align: center; }
-        
-        .test-btn { background: #f39c12; color: white; margin-top: 5px; padding: 5px; font-size: 10px; }
+        .api-config { background: #f8f9fa; border-radius: 6px; padding: 10px; margin-bottom: 15px; font-size: 11px; border: 1px solid #e0e0e0; }
+        .api-config input, .api-config select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 11px; margin-top: 4px; margin-bottom: 8px; }
+        .api-config label { font-weight: 600; margin: 5px 0 2px 0; font-size: 11px; }
+        .test-btn { background: #f39c12; color: white; margin-top: 5px; padding: 8px; font-size: 11px; border-radius: 4px; border: none; cursor: pointer; width: 100%; }
         .test-btn:hover { background: #e67e22; }
+        .info-text { font-size: 10px; color: #7f8c8d; margin-top: 8px; text-align: center; }
+        
+        .error-message { background: #fff5f5; border-left: 3px solid #e74c3c; padding: 10px; margin-top: 10px; border-radius: 4px; color: #c0392b; font-size: 11px; word-break: break-word; display: none; }
+        .error-message.show { display: block; }
+        
+        .file-info { font-size: 10px; color: #27ae60; margin-top: 4px; display: inline-block; background: #e8f8f5; padding: 2px 6px; border-radius: 10px; }
+        .upload-area { display: flex; gap: 5px; margin-top: 5px; flex-wrap: wrap; }
+        
+        .channel-select { background: #f0f7ff; padding: 5px 10px; border-radius: 20px; font-size: 11px; font-weight: normal; }
     </style>
 </head>
 <body>
@@ -55,18 +66,23 @@
 <div class="wrapper">
     
     <div class="column">
-        <h2>📋 Préparation</h2>
+        <h2>📋 Préparation 
+            <select id="channel_select" class="channel-select">
+                <option value="email">📧 E-mail</option>
+                <option value="app">📱 Application Mobile</option>
+            </select>
+        </h2>
         
         <div class="api-config">
-            <strong>🔑 Configuration API Gemini</strong>
-            <input type="text" id="api_key" placeholder="Votre clé API Gemini" value="">
-            <label style="margin-top: 8px;">🤖 Modèle Gemini</label>
-            <select id="model_select" class="model-select">
+            <label>🔑 Clé API Gemini</label>
+            <input type="text" id="api_key" placeholder="Collez votre clé API Gemini">
+            <label>🤖 Modèle Gemini</label>
+            <select id="model_select">
                 <option value="gemini-2.5-flash">✨ Gemini 2.5 Flash (rapide - recommandé)</option>
                 <option value="gemini-2.0-flash">⚡ Gemini 2.0 Flash</option>
                 <option value="gemini-2.0-flash-lite">💨 Gemini 2.0 Flash Lite (léger)</option>
             </select>
-            <button class="test-btn" onclick="testerCleApi()" style="width:100%; margin-top:5px;">🔍 Tester la clé API</button>
+            <button class="test-btn" onclick="testerCleApi()">🔍 Tester la clé API</button>
             <div class="info-text">Obtenez une clé sur <a href="https://aistudio.google.com/apikey" target="_blank">Google AI Studio</a> (gratuite)</div>
         </div>
         
@@ -75,15 +91,23 @@
         
         <label>✉️ Demande à traiter</label>
         <textarea id="demande" placeholder="Message client avec l'heure..."></textarea>
+        <div class="upload-area">
+            <input type="file" id="demande_file" accept=".pdf,.txt,.jpg,.jpeg,.png,.doc,.docx" style="display:none;" onchange="uploadFileToTextarea('demande', this)">
+            <button class="btn btn-upload" onclick="document.getElementById('demande_file').click()">📎 Joindre un document (PDF, image, etc.)</button>
+        </div>
         
         <label>⚙️ Instructions spécifiques</label>
         <textarea id="instructions" placeholder="Instructions complémentaires (optionnel)..."></textarea>
+        <div class="upload-area">
+            <input type="file" id="instructions_file" accept=".pdf,.txt,.jpg,.jpeg,.png,.doc,.docx" style="display:none;" onchange="uploadFileToTextarea('instructions', this)">
+            <button class="btn btn-upload" onclick="document.getElementById('instructions_file').click()">📎 Joindre un document</button>
+        </div>
         
         <div class="btn-group">
             <button class="btn btn-primary" onclick="genererAvecGemini()">✨ GÉNÉRER AVEC GEMINI</button>
             <button class="btn btn-secondary" onclick="copierPromptComplet()">📋 COPIER LE PROMPT</button>
         </div>
-        <div id="statusMessage" class="status-bar" style="margin-top: 10px;">✅ Prêt. Entrez votre clé API et cliquez sur "Générer avec Gemini"</div>
+        <div id="statusMessage" class="status-bar">✅ Prêt. Entrez votre clé API et cliquez sur "Générer"</div>
     </div>
 
     <div class="column">
@@ -107,6 +131,8 @@
 
         <div class="spacer"></div>
         <button class="btn btn-primary" onclick="preparerEtCopierHisto()">📝 PRÉPARER ET COPIER HISTORISATION</button>
+        
+        <div id="errorMessage" class="error-message"></div>
     </div>
 
 </div>
@@ -114,15 +140,38 @@
 <script>
     let isGenerating = false;
     
-    // Fonction pour tester la clé API
+    // Extraction du texte des fichiers (simulation - en réel nécessite une API OCR)
+    function uploadFileToTextarea(textareaId, fileInput) {
+        const file = fileInput.files[0];
+        if (!file) return;
+        
+        const textarea = document.getElementById(textareaId);
+        const fileInfo = `\n\n[Document joint: ${file.name} - ${(file.size / 1024).toFixed(1)} KB]\n`;
+        
+        if (file.type === 'text/plain') {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                textarea.value += fileInfo + e.target.result;
+                showStatus(`📄 Document "${file.name}" chargé`, "success");
+            };
+            reader.readAsText(file);
+        } else {
+            // Pour PDF, images, etc. on indique la présence du document
+            textarea.value += fileInfo + "[Contenu à analyser - Document image/PDF]\n";
+            showStatus(`📎 Document "${file.name}" ajouté (contenu à traiter manuellement)`, "info");
+        }
+        fileInput.value = '';
+    }
+    
+    // Test de la clé API
     async function testerCleApi() {
         const apiKey = document.getElementById('api_key').value.trim();
         if (!apiKey) {
-            showStatus("❌ Veuillez entrer une clé API d'abord", "error");
+            showStatus("❌ Veuillez entrer une clé API", "error");
             return;
         }
         
-        showStatus("<span class='loading'></span> Test de la clé API...", "info");
+        showStatus("<span class='loading'></span> Test de la clé...", "info");
         
         try {
             const response = await fetch(`https://generativelanguage.googleapis.com/v1/models?key=${apiKey}`);
@@ -131,21 +180,20 @@
             if (response.ok) {
                 const models = data.models || [];
                 const modelNames = models.map(m => m.name.replace('models/', '')).join(', ');
-                showStatus(`✅ Clé valide ! Modèles disponibles : ${modelNames.substring(0, 150)}...`, "success");
+                showStatus(`✅ Clé valide ! Modèles: ${modelNames.substring(0, 100)}...`, "success");
             } else {
-                showStatus(`❌ Clé invalide: ${data.error?.message || 'Erreur inconnue'}`, "error");
+                showStatus(`❌ Clé invalide: ${data.error?.message || 'Erreur'}`, "error");
             }
         } catch (error) {
             showStatus(`❌ Erreur: ${error.message}`, "error");
         }
     }
     
-    // Signature automatique
+    // Signature auto
     function initSignature() {
         const h = new Date().getHours();
         const m = new Date().getMinutes();
         const area = document.getElementById('reponse_client');
-        
         const totalMinutes = (h * 60) + m;
         const limitAM = (16 * 60) + 49;
 
@@ -162,9 +210,7 @@
         const currentResponse = document.getElementById('reponse_client').value;
         const hasContent = currentResponse.trim().length > 0 && !currentResponse.includes("Bonjour") && !currentResponse.includes("Bonsoir");
         
-        if (hasContent && !confirm("Cela remplacera votre réponse actuelle. Continuer ?")) {
-            return;
-        }
+        if (hasContent && !confirm("Remplacer la réponse actuelle ?")) return;
         initSignature();
         showStatus("Signature rafraîchie", "success");
     }
@@ -180,47 +226,50 @@
         }, 5000);
     }
     
+    function showError(message) {
+        const errorDiv = document.getElementById('errorMessage');
+        errorDiv.innerHTML = `❌ ${message}`;
+        errorDiv.classList.add('show');
+        setTimeout(() => errorDiv.classList.remove('show'), 8000);
+    }
+    
     function construirePromptComplet() {
         const hist = document.getElementById('historique').value.trim();
         const dem = document.getElementById('demande').value.trim();
         const inst = document.getElementById('instructions').value.trim();
+        const channel = document.getElementById('channel_select').value;
         
         if (!dem) {
             throw new Error("Veuillez saisir une demande client à traiter.");
         }
         
-        return `Tu es un expert relation client TotalEnergies. Rédige une réponse professionnelle et une section BASE au format strict.
+        const channelInstruction = channel === 'email' 
+            ? "Rédige une réponse au format E-MAIL professionnel avec un objet clair."
+            : "Rédige une réponse adaptée à l'APPLICATION MOBILE (format court, concis, adapté à un écran de smartphone, sans objet d'e-mail).";
+        
+        return `Tu es un expert relation client TotalEnergies. ${channelInstruction}
 
-DEMANDE CLIENT À TRAITER :
+DEMANDE CLIENT :
 ${dem}
 
 ${hist ? `HISTORIQUE :\n${hist}\n` : ""}
-${inst ? `INSTRUCTIONS SPÉCIFIQUES :\n${inst}\n` : ""}
+${inst ? `INSTRUCTIONS :\n${inst}\n` : ""}
 
-## RÈGLES DE RÉDACTION :
+## RÈGLES STRICTES :
+- Ton : chaleureux, rassurant, pédagogue
+- Utilise "je" pour tes actions, "nous" pour TotalEnergies
+- Nombres en chiffres, unités : €, kWh, kVA
+- Dates : "jour mois année" (interdiction des /)
+- Mots interdits : problème, malheureusement, recommander, engagement, meilleurs délais
+- Noms clients en MAJUSCULES
+- Services internes : majuscule sur chaque initiale
 
-1. Ton : chaleureux, rassurant, pédagogue
-2. Utilise "je" pour tes actions, "nous" pour TotalEnergies
-3. Nombres en chiffres (ex: 2 jours, 150 €)
-4. Unités : €, kWh, kVA
-5. Dates au format "jour mois année" (ex: 5 mars 2026) - INTERDICTION des barres obliques (/)
-6. Mots interdits : problème, malheureusement, recommander, engagement, meilleurs délais, impatience
-7. Noms et prénoms clients en MAJUSCULES
-8. Services internes : majuscule sur chaque initiale (Service Technique, Service Déménagement)
+## FORMAT DE RÉPONSE :
 
-## CONTACTS OFFICIELS :
-- Service Paiement : 09 70 80 65 45 (lundi-samedi 9h-19h)
-- ASP : 08 05 20 48 05
-- Service Technique/Clientèle : 09 70 80 69 69
-- Service Commercial : 30 99 (tous les jours 8h-20h)
-
-## FORMAT DE RÉPONSE EXIGÉ :
-
-Objet: [objet court sans point]
-
+${channel === 'email' ? "Objet: [objet court sans point]\n\n" : ""}
 Bonjour [Madame/Monsieur] [prénom],
 
-[Corps de la réponse avec paragraphes séparés]
+[Corps avec paragraphes]
 
 Je reste à votre disposition pour toute information complémentaire et vous souhaite de passer un(e) excellent(e) [après-midi/soirée].
 
@@ -229,15 +278,13 @@ Solofonirina
 
 ***
 
-B : [résumé de la demande en une phrase - "le client demande/souhaite"]
+B : [résumé demande - "le client demande/souhaite"]
 
-A : [informations factuelles constatées sur le dossier - laisser vide si aucune]
+A : [informations constatées - vide si aucune]
 
-S : [résumé de la solution - "j'ai informé/fait/proposé/expliqué"]
+S : [solution - "j'ai informé/fait/proposé/expliqué"]
 
-E : [actions sur Espace Client/Application Mobile ou anticipations - n/a si aucun]
-
-Génère maintenant la réponse complète et la BASE selon ce format exact.`;
+E : [actions Espace Client ou n/a]`;
     }
     
     async function genererAvecGemini() {
@@ -245,12 +292,12 @@ Génère maintenant la réponse complète et la BASE selon ce format exact.`;
         const model = document.getElementById('model_select').value;
         
         if (!apiKey) {
-            showStatus("❌ Veuillez entrer votre clé API Gemini", "error");
+            showError("Veuillez entrer votre clé API Gemini");
             return;
         }
         
         if (isGenerating) {
-            showStatus("⏳ Génération en cours...", "info");
+            showStatus("Génération en cours...", "info");
             return;
         }
         
@@ -258,12 +305,13 @@ Génère maintenant la réponse complète et la BASE selon ce format exact.`;
         try {
             prompt = construirePromptComplet();
         } catch (error) {
-            showStatus(`❌ ${error.message}`, "error");
+            showError(error.message);
             return;
         }
         
         isGenerating = true;
         showStatus(`<span class="loading"></span> Génération avec ${model}...`, "info");
+        document.getElementById('errorMessage').classList.remove('show');
         
         try {
             const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`, {
@@ -271,11 +319,7 @@ Génère maintenant la réponse complète et la BASE selon ce format exact.`;
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     contents: [{ parts: [{ text: prompt }] }],
-                    generationConfig: {
-                        temperature: 0.7,
-                        maxOutputTokens: 2048,
-                        topP: 0.95
-                    }
+                    generationConfig: { temperature: 0.7, maxOutputTokens: 2048, topP: 0.95 }
                 })
             });
             
@@ -287,33 +331,18 @@ Génère maintenant la réponse complète et la BASE selon ce format exact.`;
             const data = await response.json();
             const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text;
             
-            if (!generatedText) {
-                throw new Error("Réponse vide de l'API");
-            }
+            if (!generatedText) throw new Error("Réponse vide");
             
-            // Extraction de la réponse et de la BASE
             const parts = generatedText.split('***');
-            let reponseClient = parts[0].trim();
-            let baseContent = parts.length >= 2 ? parts[1].trim() : "B : \n\nA : \n\nS : \n\nE : ";
+            document.getElementById('reponse_client').value = parts[0].trim();
+            document.getElementById('base_area').value = parts.length >= 2 ? parts[1].trim() : "B : \n\nA : \n\nS : \n\nE : ";
             
-            document.getElementById('reponse_client').value = reponseClient;
-            document.getElementById('base_area').value = baseContent;
-            
-            showStatus(`✅ Génération réussie avec ${model} !`, "success");
+            showStatus(`✅ Génération réussie !`, "success");
             
         } catch (error) {
-            console.error('Erreur:', error);
-            let errorMsg = error.message;
-            
-            if (errorMsg.includes("API key") || errorMsg.includes("key")) {
-                errorMsg = "Clé API invalide. Vérifiez votre clé.";
-            } else if (errorMsg.includes("quota")) {
-                errorMsg = "Quota API dépassé. Réessayez plus tard.";
-            } else if (errorMsg.includes("model")) {
-                errorMsg = `Le modèle "${model}" n'est pas disponible. Essayez un autre modèle.`;
-            }
-            
-            showStatus(`❌ ${errorMsg}`, "error");
+            console.error(error);
+            showError(error.message);
+            showStatus("Erreur lors de la génération", "error");
         } finally {
             isGenerating = false;
         }
@@ -325,7 +354,7 @@ Génère maintenant la réponse complète et la BASE selon ce format exact.`;
             copyText(prompt);
             showStatus("📋 Prompt copié !", "success");
         } catch (error) {
-            showStatus(`❌ ${error.message}`, "error");
+            showError(error.message);
         }
     }
     
@@ -335,7 +364,7 @@ Génère maintenant la réponse complète et la BASE selon ce format exact.`;
         const b = document.getElementById('base_area').value;
         
         if (!d && !r) {
-            showStatus("❌ Aucune donnée à historiser", "error");
+            showError("Aucune donnée à historiser");
             return;
         }
         
@@ -345,9 +374,7 @@ Génère maintenant la réponse complète et la BASE selon ce format exact.`;
         const heureDemande = heureMatch ? heureMatch[0].replace('h', ':') : "--:--";
         
         let reponseSansBase = r;
-        if (r.includes('***')) {
-            reponseSansBase = r.split('***')[0].trim();
-        }
+        if (r.includes('***')) reponseSansBase = r.split('***')[0].trim();
         
         const bloc = `${b || "B : \n\nA : \n\nS : \n\nE : "}\n\n***************************\n\nAM du ${datePoste} à ${heureDemande}\n\nRequête client :\n${d || "(non renseignée)"}\n\nRéponse apportée :\n\n${reponseSansBase || "(non renseignée)"}`;
         
@@ -358,21 +385,21 @@ Génère maintenant la réponse complète et la BASE selon ce format exact.`;
     function copierTexte(id) {
         const element = document.getElementById(id);
         if (!element.value.trim()) {
-            showStatus(`⚠️ Champ vide`, "warning");
+            showError("Champ vide");
             return;
         }
         copyText(element.value);
-        showStatus(`📋 Copié !`, "success");
+        showStatus("📋 Copié !", "success");
     }
     
     function copyText(val) {
         navigator.clipboard.writeText(val).catch(() => {
-            const textarea = document.createElement('textarea');
-            textarea.value = val;
-            document.body.appendChild(textarea);
-            textarea.select();
+            const ta = document.createElement('textarea');
+            ta.value = val;
+            document.body.appendChild(ta);
+            ta.select();
             document.execCommand('copy');
-            document.body.removeChild(textarea);
+            document.body.removeChild(ta);
         });
     }
     
@@ -383,6 +410,7 @@ Génère maintenant la réponse complète et la BASE selon ce format exact.`;
             });
             initSignature();
             showStatus("✅ Tout vidé", "success");
+            document.getElementById('errorMessage').classList.remove('show');
         }
     }
     
@@ -393,8 +421,11 @@ Génère maintenant la réponse complète et la BASE selon ce format exact.`;
     }
     
     function sauvegarderModele() {
-        const model = document.getElementById('model_select').value;
-        localStorage.setItem('gemini_model', model);
+        localStorage.setItem('gemini_model', document.getElementById('model_select').value);
+    }
+    
+    function sauvegarderChannel() {
+        localStorage.setItem('gemini_channel', document.getElementById('channel_select').value);
     }
     
     function chargerDonnees() {
@@ -402,6 +433,8 @@ Génère maintenant la réponse complète et la BASE selon ce format exact.`;
         if (savedKey) document.getElementById('api_key').value = savedKey;
         const savedModel = localStorage.getItem('gemini_model');
         if (savedModel) document.getElementById('model_select').value = savedModel;
+        const savedChannel = localStorage.getItem('gemini_channel');
+        if (savedChannel) document.getElementById('channel_select').value = savedChannel;
     }
     
     document.addEventListener('DOMContentLoaded', () => {
@@ -411,8 +444,8 @@ Génère maintenant la réponse complète et la BASE selon ce format exact.`;
         document.getElementById('api_key').addEventListener('change', sauvegarderCleApi);
         document.getElementById('api_key').addEventListener('blur', sauvegarderCleApi);
         document.getElementById('model_select').addEventListener('change', sauvegarderModele);
+        document.getElementById('channel_select').addEventListener('change', sauvegarderChannel);
         
-        // Ctrl+Enter pour générer
         ['historique', 'demande', 'instructions'].forEach(id => {
             document.getElementById(id).addEventListener('keydown', (e) => {
                 if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
@@ -422,7 +455,7 @@ Génère maintenant la réponse complète et la BASE selon ce format exact.`;
             });
         });
         
-        showStatus("✅ Prêt ! Vos modèles disponibles : Gemini 2.5 Flash, 2.0 Flash et 2.0 Flash Lite", "success");
+        showStatus("✅ Prêt ! Canaux: Email / Application Mobile", "success");
     });
 </script>
 
