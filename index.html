@@ -2,25 +2,26 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Interface Expert Relation Client - Solofonirina (Gemini IA)</title>
+    <title>Interface Expert TotalEnergies - Gemini IA</title>
     <style>
-        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 15px; font-size: 12px; color: #333; }
-        .wrapper { display: grid; grid-template-columns: 0.8fr 2.4fr 0.8fr; gap: 15px; height: 95vh; max-width: 1600px; margin: 0 auto; }
-        .column { background: #ffffff; border-radius: 8px; display: flex; flex-direction: column; padding: 15px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        h2 { font-size: 0.9em; color: #2c3e50; margin-top: 0; border-bottom: 2px solid #3498db; padding-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; margin: 0; padding: 15px; font-size: 12px; color: #333; }
+        .wrapper { display: grid; grid-template-columns: 0.9fr 2.4fr 0.9fr; gap: 15px; height: 95vh; max-width: 1600px; margin: 0 auto; }
+        .column { background: #ffffff; border-radius: 8px; display: flex; flex-direction: column; padding: 15px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e8e8e8; }
+        h2 { font-size: 0.9em; color: #2c3e50; margin-top: 0; border-bottom: 2px solid #0066b3; padding-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
         label { font-weight: bold; display: block; margin: 8px 0 3px 0; color: #555; font-size: 0.85em; }
         
         textarea { width: 100%; border: 1px solid #ddd; border-radius: 6px; padding: 10px; box-sizing: border-box; font-family: inherit; resize: none; background: #fff; font-size: 12px; transition: border 0.2s; }
-        textarea:focus { outline: none; border-color: #3498db; box-shadow: 0 0 0 2px rgba(52,152,219,0.1); }
+        textarea:focus { outline: none; border-color: #0066b3; box-shadow: 0 0 0 2px rgba(0,102,179,0.1); }
         
-        #historique { height: 100px; }
-        #demande { height: 100px; }
-        #instructions { flex-grow: 1; min-height: 150px; }
+        select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; background: #fff; margin-bottom: 10px; cursor: pointer; font-size: 12px; }
+        
+        #historique, #demande { height: 100px; }
+        #instructions { flex-grow: 1; min-height: 120px; }
         #reponse_client { flex-grow: 1; font-size: 18px; line-height: 1.5; background: #fef9e6; border-color: #f39c12; min-height: 200px; }
 
         .btn { cursor: pointer; border: none; border-radius: 6px; padding: 10px 16px; font-weight: 600; transition: all 0.2s; margin-top: 8px; width: 100%; font-size: 0.85em; text-align: center; }
-        .btn-primary { background: #3498db; color: white; }
-        .btn-primary:hover { background: #2980b9; transform: translateY(-1px); }
+        .btn-primary { background: #0066b3; color: white; }
+        .btn-primary:hover { background: #0052a3; transform: translateY(-1px); }
         .btn-success { background: #27ae60; color: white; }
         .btn-success:hover { background: #229954; }
         .btn-warning { background: #e67e22; color: white; }
@@ -29,25 +30,31 @@
         .btn-secondary:hover { background: #7f8c8d; }
         .btn-vider { background: #ecf0f1; color: #7f8c8d; border: 1px solid #bdc3c7; }
         .btn-vider:hover { background: #bdc3c7; color: white; }
+        .btn-config { background: #34495e; color: white; }
+        .btn-config:hover { background: #2c3e50; }
         
         .btn-group { display: flex; gap: 8px; margin-top: 10px; }
         .btn-group .btn { margin-top: 0; }
         
-        .status-bar { background: #f8f9fa; border-radius: 4px; padding: 8px; margin-bottom: 10px; font-size: 11px; color: #666; border-left: 3px solid #3498db; }
+        .status-bar { background: #f8f9fa; border-radius: 4px; padding: 8px; margin-bottom: 10px; font-size: 11px; color: #666; border-left: 3px solid #0066b3; }
         .status-error { border-left-color: #e74c3c; background: #fee; color: #c0392b; }
         .status-success { border-left-color: #27ae60; background: #e8f8f5; color: #2c3e50; }
         .status-warning { border-left-color: #f39c12; background: #fff3e0; color: #e67e22; }
         
-        .loading { display: inline-block; width: 14px; height: 14px; border: 2px solid #f3f3f3; border-top: 2px solid #3498db; border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 8px; vertical-align: middle; }
+        .loading { display: inline-block; width: 14px; height: 14px; border: 2px solid #f3f3f3; border-top: 2px solid #0066b3; border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 8px; vertical-align: middle; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
-        .api-config { background: #f8f9fa; border-radius: 6px; padding: 8px; margin-bottom: 10px; font-size: 11px; }
-        .api-config input { width: calc(100% - 16px); padding: 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 11px; margin-top: 4px; }
-        .model-select { width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 11px; margin-top: 4px; background: white; }
+        .config-panel { display: none; background: #f8f9fa; border-radius: 6px; padding: 12px; margin-top: 10px; border: 1px solid #e0e0e0; }
+        .config-panel.show { display: block; }
+        .config-panel input { width: calc(100% - 16px); padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 11px; margin-top: 4px; }
+        .model-select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 11px; margin-top: 4px; background: white; }
         .info-text { font-size: 11px; color: #7f8c8d; margin-top: 5px; text-align: center; }
-        
-        .test-btn { background: #f39c12; color: white; margin-top: 5px; padding: 5px; font-size: 10px; }
+        .test-btn { background: #f39c12; color: white; margin-top: 5px; padding: 6px; font-size: 11px; border: none; border-radius: 4px; cursor: pointer; width: 100%; }
         .test-btn:hover { background: #e67e22; }
+        
+        .spacer { height: 10px; }
+        
+        .canal-badge { background: #0066b3; color: white; padding: 4px 8px; border-radius: 4px; font-size: 10px; display: inline-block; margin-bottom: 5px; }
     </style>
 </head>
 <body>
@@ -57,33 +64,26 @@
     <div class="column">
         <h2>📋 Préparation</h2>
         
-        <div class="api-config">
-            <strong>🔑 Configuration API Gemini</strong>
-            <input type="text" id="api_key" placeholder="Votre clé API Gemini" value="">
-            <label style="margin-top: 8px;">🤖 Modèle Gemini</label>
-            <select id="model_select" class="model-select">
-                <option value="gemini-2.5-flash">✨ Gemini 2.5 Flash (rapide - recommandé)</option>
-                <option value="gemini-2.0-flash">⚡ Gemini 2.0 Flash</option>
-                <option value="gemini-2.0-flash-lite">💨 Gemini 2.0 Flash Lite (léger)</option>
-            </select>
-            <button class="test-btn" onclick="testerCleApi()" style="width:100%; margin-top:5px;">🔍 Tester la clé API</button>
-            <div class="info-text">Obtenez une clé sur <a href="https://aistudio.google.com/apikey" target="_blank">Google AI Studio</a> (gratuite)</div>
-        </div>
-        
+        <label>📱 Canal de traitement</label>
+        <select id="canal_choix" onchange="majSignature()">
+            <option value="AM">📱 Application Mobile</option>
+            <option value="EMAIL">✉️ E-mail</option>
+        </select>
+
         <label>📜 Historique complet</label>
-        <textarea id="historique" placeholder="Laisser vide si aucun historique..."></textarea>
+        <textarea id="historique" spellcheck="false" placeholder="Laisser vide si aucun historique..."></textarea>
         
         <label>✉️ Demande à traiter</label>
-        <textarea id="demande" placeholder="Message client avec l'heure..."></textarea>
+        <textarea id="demande" spellcheck="false" placeholder="Message client avec l'heure..."></textarea>
         
         <label>⚙️ Instructions spécifiques</label>
-        <textarea id="instructions" placeholder="Instructions complémentaires (optionnel)..."></textarea>
+        <textarea id="instructions" spellcheck="false" placeholder="Instructions complémentaires (optionnel)..."></textarea>
         
         <div class="btn-group">
             <button class="btn btn-primary" onclick="genererAvecGemini()">✨ GÉNÉRER AVEC GEMINI</button>
             <button class="btn btn-secondary" onclick="copierPromptComplet()">📋 COPIER LE PROMPT</button>
         </div>
-        <div id="statusMessage" class="status-bar" style="margin-top: 10px;">✅ Prêt. Entrez votre clé API et cliquez sur "Générer avec Gemini"</div>
+        <div id="statusMessage" class="status-bar">✅ Prêt. Cliquez sur "⚙️ CONFIGURATION API" ci-dessous pour configurer Gemini</div>
     </div>
 
     <div class="column">
@@ -101,18 +101,40 @@
         <h2>📊 Suivi & BASE</h2>
         <button class="btn btn-vider" onclick="toutVider()">🗑️ VIDER TOUT</button>
 
-        <label>📌 BASE (générée automatiquement)</label>
+        <label>📌 BASE</label>
         <textarea id="base_area" style="flex-grow: 1; min-height: 150px; font-family: monospace; font-size: 12px;" placeholder="B :&#10;A :&#10;S :&#10;E :"></textarea>
         <button class="btn btn-secondary" onclick="copierTexte('base_area')">📋 COPIER BASE SEULE</button>
 
         <div class="spacer"></div>
         <button class="btn btn-primary" onclick="preparerEtCopierHisto()">📝 PRÉPARER ET COPIER HISTORISATION</button>
+        
+        <div class="spacer"></div>
+        <button class="btn btn-config" onclick="toggleConfigPanel()">⚙️ CONFIGURATION API</button>
+        
+        <div id="configPanel" class="config-panel">
+            <strong>🔑 Configuration API Gemini</strong>
+            <input type="password" id="api_key" placeholder="Votre clé API Gemini" autocomplete="off">
+            <label style="margin-top: 8px;">🤖 Modèle Gemini</label>
+            <select id="model_select" class="model-select">
+                <option value="gemini-2.5-flash">✨ Gemini 2.5 Flash (rapide - recommandé)</option>
+                <option value="gemini-2.0-flash">⚡ Gemini 2.0 Flash</option>
+                <option value="gemini-2.0-flash-lite">💨 Gemini 2.0 Flash Lite (léger)</option>
+            </select>
+            <button class="test-btn" onclick="testerCleApi()">🔍 Tester la clé API</button>
+            <div class="info-text">Obtenez une clé sur <a href="https://aistudio.google.com/apikey" target="_blank">Google AI Studio</a> (gratuite)</div>
+        </div>
     </div>
 
 </div>
 
 <script>
     let isGenerating = false;
+    
+    // Toggle configuration panel
+    function toggleConfigPanel() {
+        const panel = document.getElementById('configPanel');
+        panel.classList.toggle('show');
+    }
     
     // Fonction pour tester la clé API
     async function testerCleApi() {
@@ -140,33 +162,32 @@
         }
     }
     
-    // Signature automatique
-    function initSignature() {
-        const h = new Date().getHours();
-        const m = new Date().getMinutes();
-        const area = document.getElementById('reponse_client');
+    // Signature automatique avec gestion du canal
+    function majSignature() {
+        const canal = document.getElementById('canal_choix').value;
+        const now = new Date();
+        const heure = now.getHours();
+        const reponseArea = document.getElementById('reponse_client');
         
-        const totalMinutes = (h * 60) + m;
-        const limitAM = (16 * 60) + 49;
+        let salutation = (heure >= 2 && heure < 17) ? "Bonjour Madame," : "Bonsoir Monsieur,";
+        let souhaite = (heure >= 2 && heure < 17) ? "un excellent après-midi" : "une excellente soirée";
 
-        if (!area.value || area.value.trim() === "" || area.value.includes("Bonjour") || area.value.includes("Bonsoir")) {
-            if (totalMinutes >= 120 && totalMinutes <= limitAM) {
-                area.value = "Bonjour Madame,\n\n\n\nJe reste à votre disposition pour toute information complémentaire et vous souhaite de passer un excellent après-midi.\n\nCordialement,\n\nSolofonirina";
-            } else {
-                area.value = "Bonsoir Monsieur,\n\n\n\nJe reste à votre disposition pour toute information complémentaire et vous souhaite de passer une excellente soirée.\n\nCordialement,\n\nSolofonirina";
-            }
+        if (canal === "EMAIL") {
+            reponseArea.value = `Objet : \n\nMadame, Monsieur,\n\n\n\nJe reste à votre disposition pour toute information complémentaire et vous souhaite de passer ${souhaite}.\n\nCordialement,\n\nSolofonirina`;
+        } else {
+            reponseArea.value = `${salutation}\n\n\n\nJe reste à votre disposition pour toute information complémentaire et vous souhaite de passer ${souhaite}.\n\nCordialement,\n\nSolofonirina`;
         }
     }
     
     function rafraichirSignature() {
         const currentResponse = document.getElementById('reponse_client').value;
-        const hasContent = currentResponse.trim().length > 0 && !currentResponse.includes("Bonjour") && !currentResponse.includes("Bonsoir");
+        const hasContent = currentResponse.trim().length > 0 && !currentResponse.includes("Bonjour") && !currentResponse.includes("Bonsoir") && !currentResponse.includes("Madame");
         
         if (hasContent && !confirm("Cela remplacera votre réponse actuelle. Continuer ?")) {
             return;
         }
-        initSignature();
-        showStatus("Signature rafraîchie", "success");
+        majSignature();
+        showStatus("Signature rafraîchie selon le canal et l'heure", "success");
     }
     
     function showStatus(message, type = "info") {
@@ -184,12 +205,20 @@
         const hist = document.getElementById('historique').value.trim();
         const dem = document.getElementById('demande').value.trim();
         const inst = document.getElementById('instructions').value.trim();
+        const canal = document.getElementById('canal_choix').value;
         
         if (!dem) {
             throw new Error("Veuillez saisir une demande client à traiter.");
         }
         
+        const formatSpecifique = canal === "EMAIL" ? 
+            "Format E-mail avec objet, corps et signature complète" : 
+            "Format Application Mobile avec salutation courte et signature Solofonirina";
+        
         return `Tu es un expert relation client TotalEnergies. Rédige une réponse professionnelle et une section BASE au format strict.
+
+CANAL DE RÉPONSE : ${canal === "EMAIL" ? "E-MAIL" : "APPLICATION MOBILE"}
+${formatSpecifique}
 
 DEMANDE CLIENT À TRAITER :
 ${dem}
@@ -204,9 +233,9 @@ ${inst ? `INSTRUCTIONS SPÉCIFIQUES :\n${inst}\n` : ""}
 3. Nombres en chiffres (ex: 2 jours, 150 €)
 4. Unités : €, kWh, kVA
 5. Dates au format "jour mois année" (ex: 5 mars 2026) - INTERDICTION des barres obliques (/)
-6. Mots interdits : problème, malheureusement, recommander, engagement, meilleurs délais, impatience
+6. Mots interdits : problème, malheureusement, recommander, engagement, meilleurs délais, impatience, co-titulaire
 7. Noms et prénoms clients en MAJUSCULES
-8. Services internes : majuscule sur chaque initiale (Service Technique, Service Déménagement)
+8. Services internes : majuscule sur chaque initiale (Service Technique, Service Déménagement...)
 
 ## CONTACTS OFFICIELS :
 - Service Paiement : 09 70 80 65 45 (lundi-samedi 9h-19h)
@@ -216,16 +245,25 @@ ${inst ? `INSTRUCTIONS SPÉCIFIQUES :\n${inst}\n` : ""}
 
 ## FORMAT DE RÉPONSE EXIGÉ :
 
-Objet: [objet court sans point]
+${canal === "EMAIL" ? 
+`Objet: [objet court sans point]
 
 Bonjour [Madame/Monsieur] [prénom],
 
 [Corps de la réponse avec paragraphes séparés]
 
-Je reste à votre disposition pour toute information complémentaire et vous souhaite de passer un(e) excellent(e) [après-midi/soirée].
+Je reste à votre disposition pour toute information complémentaire et vous souhaite de passer [un excellent après-midi/une excellente soirée].
 
 Cordialement,
-Solofonirina
+Solofonirina` : 
+`Bonjour [Madame/Monsieur],
+
+[Corps de la réponse avec paragraphes séparés]
+
+Je reste à votre disposition pour toute information complémentaire et vous souhaite de passer [un excellent après-midi/une excellente soirée].
+
+Cordialement,
+Solofonirina`}
 
 ***
 
@@ -245,7 +283,7 @@ Génère maintenant la réponse complète et la BASE selon ce format exact.`;
         const model = document.getElementById('model_select').value;
         
         if (!apiKey) {
-            showStatus("❌ Veuillez entrer votre clé API Gemini", "error");
+            showStatus("❌ Veuillez configurer votre clé API (bouton ⚙️ CONFIGURATION API)", "error");
             return;
         }
         
@@ -291,7 +329,6 @@ Génère maintenant la réponse complète et la BASE selon ce format exact.`;
                 throw new Error("Réponse vide de l'API");
             }
             
-            // Extraction de la réponse et de la BASE
             const parts = generatedText.split('***');
             let reponseClient = parts[0].trim();
             let baseContent = parts.length >= 2 ? parts[1].trim() : "B : \n\nA : \n\nS : \n\nE : ";
@@ -306,7 +343,7 @@ Génère maintenant la réponse complète et la BASE selon ce format exact.`;
             let errorMsg = error.message;
             
             if (errorMsg.includes("API key") || errorMsg.includes("key")) {
-                errorMsg = "Clé API invalide. Vérifiez votre clé.";
+                errorMsg = "Clé API invalide. Vérifiez votre clé dans Configuration API.";
             } else if (errorMsg.includes("quota")) {
                 errorMsg = "Quota API dépassé. Réessayez plus tard.";
             } else if (errorMsg.includes("model")) {
@@ -322,7 +359,7 @@ Génère maintenant la réponse complète et la BASE selon ce format exact.`;
     function copierPromptComplet() {
         try {
             const prompt = construirePromptComplet();
-            copyText(prompt);
+            copyToClipboard(prompt);
             showStatus("📋 Prompt copié !", "success");
         } catch (error) {
             showStatus(`❌ ${error.message}`, "error");
@@ -333,6 +370,7 @@ Génère maintenant la réponse complète et la BASE selon ce format exact.`;
         const d = document.getElementById('demande').value;
         const r = document.getElementById('reponse_client').value;
         const b = document.getElementById('base_area').value;
+        const canal = document.getElementById('canal_choix').value;
         
         if (!d && !r) {
             showStatus("❌ Aucune donnée à historiser", "error");
@@ -349,9 +387,11 @@ Génère maintenant la réponse complète et la BASE selon ce format exact.`;
             reponseSansBase = r.split('***')[0].trim();
         }
         
-        const bloc = `${b || "B : \n\nA : \n\nS : \n\nE : "}\n\n***************************\n\nAM du ${datePoste} à ${heureDemande}\n\nRequête client :\n${d || "(non renseignée)"}\n\nRéponse apportée :\n\n${reponseSansBase || "(non renseignée)"}`;
+        const labelEntete = (canal === "EMAIL") ? `Mail Odigo du ${datePoste} à ${heureDemande}` : `AM du ${datePoste} à ${heureDemande}`;
         
-        copyText(bloc);
+        const bloc = `${b || "B : \n\nA : \n\nS : \n\nE : "}\n\n***************************\n\n${labelEntete}\n\nRequête client :\n${d || "(non renseignée)"}\n\nRéponse apportée :\n\n${reponseSansBase || "(non renseignée)"}`;
+        
+        copyToClipboard(bloc);
         showStatus("📋 Historisation copiée !", "success");
     }
     
@@ -361,14 +401,16 @@ Génère maintenant la réponse complète et la BASE selon ce format exact.`;
             showStatus(`⚠️ Champ vide`, "warning");
             return;
         }
-        copyText(element.value);
+        copyToClipboard(element.value);
         showStatus(`📋 Copié !`, "success");
     }
     
-    function copyText(val) {
-        navigator.clipboard.writeText(val).catch(() => {
+    function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(() => {
+            // Pas d'alert pour ne pas interrompre le flux
+        }).catch(() => {
             const textarea = document.createElement('textarea');
-            textarea.value = val;
+            textarea.value = text;
             document.body.appendChild(textarea);
             textarea.select();
             document.execCommand('copy');
@@ -377,16 +419,16 @@ Génère maintenant la réponse complète et la BASE selon ce format exact.`;
     }
     
     function toutVider() {
-        if(confirm("Effacer tout ?")) {
+        if(confirm("Effacer tous les champs ?")) {
             ['historique', 'demande', 'instructions', 'base_area'].forEach(id => {
                 document.getElementById(id).value = "";
             });
-            initSignature();
-            showStatus("✅ Tout vidé", "success");
+            majSignature();
+            showStatus("✅ Tout a été vidé", "success");
         }
     }
     
-    // Sauvegarde
+    // Sauvegarde de la clé API et du modèle
     function sauvegarderCleApi() {
         const apiKey = document.getElementById('api_key').value;
         if (apiKey) localStorage.setItem('gemini_api_key', apiKey);
@@ -397,20 +439,28 @@ Génère maintenant la réponse complète et la BASE selon ce format exact.`;
         localStorage.setItem('gemini_model', model);
     }
     
+    function sauvegarderCanal() {
+        const canal = document.getElementById('canal_choix').value;
+        localStorage.setItem('canal_choix', canal);
+    }
+    
     function chargerDonnees() {
         const savedKey = localStorage.getItem('gemini_api_key');
         if (savedKey) document.getElementById('api_key').value = savedKey;
         const savedModel = localStorage.getItem('gemini_model');
         if (savedModel) document.getElementById('model_select').value = savedModel;
+        const savedCanal = localStorage.getItem('canal_choix');
+        if (savedCanal) document.getElementById('canal_choix').value = savedCanal;
     }
     
     document.addEventListener('DOMContentLoaded', () => {
         chargerDonnees();
-        initSignature();
+        majSignature();
         
         document.getElementById('api_key').addEventListener('change', sauvegarderCleApi);
         document.getElementById('api_key').addEventListener('blur', sauvegarderCleApi);
         document.getElementById('model_select').addEventListener('change', sauvegarderModele);
+        document.getElementById('canal_choix').addEventListener('change', sauvegarderCanal);
         
         // Ctrl+Enter pour générer
         ['historique', 'demande', 'instructions'].forEach(id => {
@@ -422,7 +472,7 @@ Génère maintenant la réponse complète et la BASE selon ce format exact.`;
             });
         });
         
-        showStatus("✅ Prêt ! Vos modèles disponibles : Gemini 2.5 Flash, 2.0 Flash et 2.0 Flash Lite", "success");
+        showStatus("✅ Prêt ! Cliquez sur '⚙️ CONFIGURATION API' pour configurer Gemini", "success");
     });
 </script>
 
