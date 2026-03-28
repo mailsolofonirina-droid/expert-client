@@ -207,6 +207,8 @@ Redige juste le cors de message ou e-mail
 
 La salutation et la phrase verouillage suit la structure du canal choisi
 
+Pour chaque, il faut rediger le BASE
+
 📝 Complétion BASE (Format Stricte)
 
 B : résumé de la demande du client en une phrase simple >>> le client demande/souhaite
@@ -295,7 +297,7 @@ B : résumé de la demande du client en une phrase simple >>> le client demande/
         // Ajout des instructions spécifiques au canal
         const instructionsCanal = canal === "EMAIL" 
             ? `\n\nINSTRUCTION CANAL E-MAIL :\n- Rédige une réponse complète avec Objet, BP, corps du message, formule de politesse et signature.\n- Structure : Objet: [objet]\\n\\nBP : \\n\\nMme [PRENOM],\\n\\n[corps]\\n\\nJe reste à votre disposition...\\n\\nCordialement,`
-            : `\n\nINSTRUCTION CANAL APPLICATION MOBILE :\n- Rédige une réponse complète avec salutation, corps du message, formule de politesse et signature.\n- Structure : Bonjour/Bonsoir Monsieur [PRENOM],\\n\\n[corps]\\n\\nJe reste à votre disposition...\\n\\nCordialement,\\n\\nSolofonirina\n- Adapte "Bonjour" ou "Bonsoir" selon l'heure (Bonjour de 2h à 17h, Bonsoir de 17h à 2h).\n- Adapte "un excellent après-midi" ou "une excellente soirée" selon l'heure.`;
+            : `\n\nINSTRUCTION CANAL APPLICATION MOBILE :\n- Rédige une réponse complète avec salutation, corps du message, formule de politesse et signature.\n- Structure : Bonjour/Bonsoir Monsieur,\\n\\n[corps]\\n\\nJe reste à votre disposition...\\n\\nCordialement,\\n\\nSolofonirina\n- Adapte "Bonjour" ou "Bonsoir" selon l'heure (Bonjour de 2h à 17h, Bonsoir de 17h à 2h).\n- Adapte "un excellent après-midi" ou "une excellente soirée" selon l'heure.`;
         
         return `${PROMPT_BASE}\n\n****************************\nHISTORIQUE :\n${hist || "Aucun historique"}\n\nDEMANDE CLIENT :\n${dem}\n\nINSTRUCTIONS COMPLÉMENTAIRES :\n${inst || "Aucune instruction spécifique"}${instructionsCanal}\n\n************************************\nGénère maintenant la réponse complète avec la structure appropriée pour le canal sélectionné.`;
     }
