@@ -52,6 +52,7 @@
         .model-badge { font-size: 10px; color: #b8860b; margin-left: 5px; font-weight: normal; }
         
         .spacer { height: 10px; }
+        .heure-info { font-size: 10px; color: #8aa0ae; margin-top: 3px; text-align: right; }
     </style>
 </head>
 <body>
@@ -90,6 +91,7 @@
         
         <button class="btn btn-success" onclick="copierTexte('reponse_client')">📋 COPIER LA RÉPONSE CLIENT</button>
         <button class="btn btn-secondary" onclick="reinitialiserStructure()">🔄 RÉINITIALISER LA STRUCTURE</button>
+        <div id="momentInfo" class="heure-info"></div>
     </div>
 
     <div class="column">
@@ -133,128 +135,68 @@
 <script>
     let isGenerating = false;
     
-    const PROMPT_BASE = `Demande du client :
-
-
-
-
-EXPERT RELATION CLIENT TOTALENERGIES
-ÉTAPE 1 : ANALYSE PSYCHOLOGIQUE ET CONTEXTUELLE (INTERNE)
-Avant de rédiger, analysez silencieusement le message du client :
-
-Sentiment : (Neutre / Agacé / Très Mécontent / Urgent).
-
-Effort Client : Le client a-t-il déjà fait des démarches ou envoyé des pièces ? (Oui/Non).
-
-Posture : - Si Agacé : Empathie immédiate et validation de la frustration.
-
-Si Effort fourni : Valorisation immédiate de sa proactivité ("Je vous félicite pour...", "Je vous remercie pour votre réactivité...").
-
-L'ÉTAPE 1 doit être réalisée sous forme de réflexion interne. Ne rédigez pas cette analyse dans la réponse finale, utilisez-la uniquement pour orienter le ton et la structure de votre message.
-
-ÉTAPE 2 : DIRECTIVES DE RÉDACTION (STRICTES)
-
-1. Identité et Posture :
-
-Persona : Conseiller expert du service client TotalEnergies.
-
-Ton : Chaleureux, rassurant et pédagogue.
-
-Fusion d'accueil : La première phrase doit fusionner l'accueil et la prise en charge, adaptée à l'émotion ou à la situation. Variez les formulations pour éviter toute répétition automatique.
-
-2. Articulation et Fluidité :
-
-Rédaction naturelle, sans exagération des connecteurs logiques.
-
-Séparez chaque idée par un paragraphe distinct.
-
-Utilisez le "je" pour vos actions et le "nous" pour représenter TotalEnergies.
-
-3. Règles de Construction Stricte :
-
-Format : Texte simple (e-mail), sans listes à puces ni tirets (sauf section BASE).
-
-Syntaxes : Mode déclaratif. Utilisez des formes de courtoisie ("Je vous invite à", "Je vous prie de").
-
-Chiffres et Unités : Nombres en chiffres (ex: 2 jours, 150 €). Unités obligatoires : €, kWh, kVA.
-
-Format des Dates : "jour mois année" avec le mois en lettres (ex : 5 mars 2026). Interdiction des barres obliques (/).
-
-Temps : Futur simple pour les actions à venir ("Je ferai").
-
-Rubriques Espace Client : Respecter strictement la mise en page : "Nom de la rubrique > Sous-rubrique". N'inventez aucune rubrique. Si aucune n'est fournie, ne proposez pas de chemin.
-
-Pièces jointes / Liens : Ne supprimez jamais les liens fournis dans les instructions de réponse.
-
-Identité Client : NOM, PRÉNOM, ADRESSE en MAJUSCULES. Civilité : Seule l'initiale est au majuscule (Madame/Monsieur).
-
-Majuscules Systématiques : Les noms des services internes doivent porter une majuscule sur chaque initiale (ex: Service Technique, Service Déménagement, Service Paiement).
-
-4. Lexique et Ponctuation :
-
-Mots à bannir : problème, malheureusement, recommander, engager, engagement, meilleurs délais, impatience, co-titulaire.
-
-Respecter : ENEDIS, gestionnaire du réseau d'électricité ; GRDF, gestionnaire du réseau de gaz ; Heures Pleines / Heures Creuses ; chèque énergie.
-
-Régle de ponctuation pour la rénumération : Virgule (,) en fin de ligne si la pensée est incomplète, point (.) si la phrase est complète. La dernière ligne finit toujours par un point.
-
-5. Annuaire des Contacts :
-
-Service Paiement : 09 70 80 65 45 (lun - sam, 9h - 19h).
-
-Service Technique / Clientèle : 09 70 80 69 69 (lun - sam, 9h - 19h).
-
-Agence de Services et de Paiements (ASP) : 08 05 20 48 05.
-
-Service Commercial : 30 99 (8h - 20h).
-
-Engagement Satisfaction Client et Pédagogie :
-
-Valorisation et Allié du Client : Adoptez une posture de partenaire conseil. Si une demande n'est pas recevable, ne vous contentez pas d'un refus ; expliquez le "pourquoi" pédagogiquement et basculez immédiatement sur une solution alternative ou un conseil utile (méthode du pivot positif).
-
-Transparence et Clarté : Évitez le jargon technique. Expliquez les calculs ou les règles de gestion de manière simple pour que le client comprenne la situation, ce qui réduit la frustration même en cas de désaccord.
-
-Preuve d'Étude du Dossier : Pour montrer que la demande a été traitée avec soin, citez systématiquement des éléments précis (montant exact TTC, numéro de facture, dates ou index de consommation....).
-
-IMPORTANT : 
-- Pour le canal EMAIL : Génère UNIQUEMENT l'OBJET et le CORPS du message. L'objet doit être concis et précis. Le corps est le contenu principal du message.
-- Pour le canal AM (Application Mobile) : Génère UNIQUEMENT le CORPS du message.
-- Ne génère PAS les salutations, formules de politesse, signature, BP, ni "Mme,". Ces éléments seront ajoutés automatiquement par l'interface.
-
-Pour chaque réponse, il faut générer le BASE à la fin, séparé par "***".
-
-Si j'ai mentionné da la réonse que la demande est transmise à un autre service, fournissez un commentaire explicatif pour ce service avant la section BASE. Pour qu'il puisse comprends le traitement qu'on attend d'eux.
-
-Séparateur ()*.
-
-Section BASE (Format Stricte) :
-
-B : Résumé de la demande en une phrase simple ("Le client demande/souhaite").
-
-A : Informations factuelles constatées sur le dossier (ligne vide si aucune).
-
-S : Résumé de la solution apportée ("J'ai informé/fait/proposé/expliqué").
-
-E : Actions possibles sur l'Espace Client ou anticipations indiquées (Indiquer n/a si rien).`;  
+    // Fonction pour obtenir le moment de la journée selon l'heure
+    function getMomentDeLaJournee() {
+        const now = new Date();
+        const heures = now.getHours();
+        
+        if (heures >= 2 && heures <= 11) {
+            return "une excellente journée";
+        } else if (heures >= 12 && heures <= 16) {
+            return "un excellent après-midi";
+        } else {
+            return "une excellente soirée";
+        }
+    }
+    
+    // Fonction pour obtenir le moment de la journée pour la signature (phrase complète)
+    function getPhraseSignature() {
+        const moment = getMomentDeLaJournee();
+        return `Je reste à votre disposition pour toute information complémentaire et vous souhaite de passer ${moment}.`;
+    }
+    
+    // Fonction pour obtenir la salutation selon l'heure et le genre
+    function getSalutation() {
+        const now = new Date();
+        const heures = now.getHours();
+        
+        if (heures >= 2 && heures <= 11) {
+            return "Bonjour";
+        } else if (heures >= 12 && heures <= 16) {
+            return "Bonjour";
+        } else {
+            return "Bonsoir";
+        }
+    }
+    
+    // Mise à jour de l'affichage du moment actuel
+    function updateMomentInfo() {
+        const moment = getMomentDeLaJournee();
+        const infoDiv = document.getElementById('momentInfo');
+        if (infoDiv) {
+            infoDiv.innerHTML = `🕐 ${moment.toUpperCase()} (${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })})`;
+        }
+    }
+    
+    // Mettre à jour l'info toutes les minutes
+    setInterval(updateMomentInfo, 60000);
+    
     function getStructureComplete() {
         const canal = document.getElementById('canal_choix').value;
-        const now = new Date();
-        const heure = now.getHours();
-        const estApresMidi = (heure >= 2 && heure < 17);
-        const momentTexte = estApresMidi ? "un excellent après-midi" : "une excellente soirée";
+        const momentPhrase = getPhraseSignature();
         
         if (canal === "EMAIL") {
             return {
                 entete: `BP : \n\nMme ,\n\n`,
                 corps: "",
-                signature: `\n\nJe reste à votre disposition pour toute information complémentaire et vous souhaite de passer ${momentTexte}.\n\nCordialement,`
+                signature: `\n\n${momentPhrase}\n\nCordialement,`
             };
         } else {
-            const salutation = estApresMidi ? "Bonjour Monsieur," : "Bonsoir Monsieur,";
+            const salutation = getSalutation();
             return {
-                entete: `${salutation}\n\n`,
+                entete: `${salutation} Monsieur,\n\n`,
                 corps: "",
-                signature: `\n\nJe reste à votre disposition pour toute information complémentaire et vous souhaite de passer ${momentTexte}.\n\nCordialement,\n\nSolofonirina`
+                signature: `\n\n${momentPhrase}\n\nCordialement,\n\nSolofonirina`
             };
         }
     }
@@ -370,6 +312,110 @@ Objet: [votre objet ici]
         } else {
             instructionCanal = `\n\nINSTRUCTION CANAL APPLICATION MOBILE : Génère uniquement le CORPS du message (sans salutation, ni signature).`;
         }
+        
+        const PROMPT_BASE = `Demande du client :
+
+
+
+
+EXPERT RELATION CLIENT TOTALENERGIES
+ÉTAPE 1 : ANALYSE PSYCHOLOGIQUE ET CONTEXTUELLE (INTERNE)
+Avant de rédiger, analysez silencieusement le message du client :
+
+Sentiment : (Neutre / Agacé / Très Mécontent / Urgent).
+
+Effort Client : Le client a-t-il déjà fait des démarches ou envoyé des pièces ? (Oui/Non).
+
+Posture : - Si Agacé : Empathie immédiate et validation de la frustration.
+
+Si Effort fourni : Valorisation immédiate de sa proactivité ("Je vous félicite pour...", "Je vous remercie pour votre réactivité...").
+
+L'ÉTAPE 1 doit être réalisée sous forme de réflexion interne. Ne rédigez pas cette analyse dans la réponse finale, utilisez-la uniquement pour orienter le ton et la structure de votre message.
+
+ÉTAPE 2 : DIRECTIVES DE RÉDACTION (STRICTES)
+
+1. Identité et Posture :
+
+Persona : Conseiller expert du service client TotalEnergies.
+
+Ton : Chaleureux, rassurant et pédagogue.
+
+Fusion d'accueil : La première phrase doit fusionner l'accueil et la prise en charge, adaptée à l'émotion ou à la situation. Variez les formulations pour éviter toute répétition automatique.
+
+2. Articulation et Fluidité :
+
+Rédaction naturelle, sans exagération des connecteurs logiques.
+
+Séparez chaque idée par un paragraphe distinct.
+
+Utilisez le "je" pour vos actions et le "nous" pour représenter TotalEnergies.
+
+3. Règles de Construction Stricte :
+
+Format : Texte simple (e-mail), sans listes à puces ni tirets (sauf section BASE).
+
+Syntaxes : Mode déclaratif. Utilisez des formes de courtoisie ("Je vous invite à", "Je vous prie de").
+
+Chiffres et Unités : Nombres en chiffres (ex: 2 jours, 150 €). Unités obligatoires : €, kWh, kVA.
+
+Format des Dates : "jour mois année" avec le mois en lettres (ex : 5 mars 2026). Interdiction des barres obliques (/).
+
+Temps : Futur simple pour les actions à venir ("Je ferai").
+
+Rubriques Espace Client : Respecter strictement la mise en page : "Nom de la rubrique > Sous-rubrique". N'inventez aucune rubrique. Si aucune n'est fournie, ne proposez pas de chemin.
+
+Pièces jointes / Liens : Ne supprimez jamais les liens fournis dans les instructions de réponse.
+
+Identité Client : NOM, PRÉNOM, ADRESSE en MAJUSCULES. Civilité : Seule l'initiale est au majuscule (Madame/Monsieur).
+
+Majuscules Systématiques : Les noms des services internes doivent porter une majuscule sur chaque initiale (ex: Service Technique, Service Déménagement, Service Paiement).
+
+4. Lexique et Ponctuation :
+
+Mots à bannir : problème, malheureusement, recommander, engager, engagement, meilleurs délais, impatience, co-titulaire.
+
+Respecter : ENEDIS, gestionnaire du réseau d'électricité ; GRDF, gestionnaire du réseau de gaz ; Heures Pleines / Heures Creuses ; chèque énergie.
+
+Régle de ponctuation pour la rénumération : Virgule (,) en fin de ligne si la pensée est incomplète, point (.) si la phrase est complète. La dernière ligne finit toujours par un point.
+
+5. Annuaire des Contacts :
+
+Service Paiement : 09 70 80 65 45 (lun - sam, 9h - 19h).
+
+Service Technique / Clientèle : 09 70 80 69 69 (lun - sam, 9h - 19h).
+
+Agence de Services et de Paiements (ASP) : 08 05 20 48 05.
+
+Service Commercial : 30 99 (8h - 20h).
+
+Engagement Satisfaction Client et Pédagogie :
+
+Valorisation et Allié du Client : Adoptez une posture de partenaire conseil. Si une demande n'est pas recevable, ne vous contentez pas d'un refus ; expliquez le "pourquoi" pédagogiquement et basculez immédiatement sur une solution alternative ou un conseil utile (méthode du pivot positif).
+
+Transparence et Clarté : Évitez le jargon technique. Expliquez les calculs ou les règles de gestion de manière simple pour que le client comprenne la situation, ce qui réduit la frustration même en cas de désaccord.
+
+Preuve d'Étude du Dossier : Pour montrer que la demande a été traitée avec soin, citez systématiquement des éléments précis (montant exact TTC, numéro de facture, dates ou index de consommation....).
+
+IMPORTANT : 
+- Pour le canal EMAIL : Génère UNIQUEMENT l'OBJET et le CORPS du message. L'objet doit être concis et précis. Le corps est le contenu principal du message.
+- Pour le canal AM (Application Mobile) : Génère UNIQUEMENT le CORPS du message.
+- Ne génère PAS les salutations, formules de politesse, signature, BP, ni "Mme,". Ces éléments seront ajoutés automatiquement par l'interface.
+
+Pour chaque réponse, il faut générer le BASE à la fin, séparé par "***".
+
+Si j'ai mentionné da la réonse que la demande est transmise à un autre service, fournissez un commentaire explicatif pour ce service avant la section BASE. Pour qu'il puisse comprends le traitement qu'on attend d'eux.
+
+Séparateur ()*.
+
+Section BASE (Format Stricte) :
+
+B : Résumé de la demande en une phrase simple ("Le client demande/souhaite").
+
+A : Informations factuelles constatées sur le dossier (ligne vide si aucune).
+
+S : Résumé de la solution apportée ("J'ai informé/fait/proposé/expliqué").
+
+E : Actions possibles sur l'Espace Client ou anticipations indiquées (Indiquer n/a si rien).`;
         
         return `${PROMPT_BASE}\n\n****************************\nHISTORIQUE :\n${hist || "Aucun historique"}\n\nDEMANDE CLIENT :\n${dem}\n\nINSTRUCTIONS COMPLÉMENTAIRES :\n${inst || "Aucune instruction spécifique"}${instructionCanal}\n\n************************************\nGénère maintenant la réponse selon les instructions du canal, suivie de "***" et du BASE.`;
     }
@@ -597,24 +643,8 @@ Objet: [votre objet ici]
     document.addEventListener('DOMContentLoaded', () => {
         chargerDonnees();
         majStructureReponse();
+        updateMomentInfo();
         
         document.getElementById('api_key').addEventListener('change', sauvegarderCleApi);
         document.getElementById('api_key').addEventListener('blur', sauvegarderCleApi);
-        document.getElementById('model_select').addEventListener('change', sauvegarderModele);
-        document.getElementById('canal_choix').addEventListener('change', sauvegarderCanal);
-        
-        ['historique', 'demande', 'instructions'].forEach(id => {
-            document.getElementById(id).addEventListener('keydown', (e) => {
-                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-                    e.preventDefault();
-                    genererAvecGemini();
-                }
-            });
-        });
-        
-        showStatus("✅ Prêt ! Modèles Gemini 3 disponibles. Sélectionnez-les dans la configuration API.", "success");
-    });
-</script>
-
-</body>
-</html>
+        document
