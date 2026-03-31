@@ -239,6 +239,37 @@ S : Résumé de la solution apportée ("J'ai informé/fait/proposé/expliqué").
 
 E : Actions possibles sur l'Espace Client ou anticipations indiquées (Indiquer n/a si rien).`;
     
+    // Fonction pour extraire la date et l'heure de la demande
+    function extraireDateHeureDemande(texteDemande) {
+        // Recherche des patterns de date comme: 31/03/26 13:28 ou 31/03/2026 13:28
+        const datePattern = /(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s+(\d{1,2})[:h](\d{2})/i;
+        const match = texteDemande.match(datePattern);
+        
+        if (match) {
+            let jour = match[1].padStart(2, '0');
+            let mois = match[2].padStart(2, '0');
+            let annee = match[3];
+            let heure = match[4].padStart(2, '0');
+            let minute = match[5];
+            
+            // Conversion de l'année si elle est sur 2 chiffres
+            if (annee.length === 2) {
+                annee = '20' + annee;
+            }
+            
+            const moisNoms = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+            const moisIndex = parseInt(mois, 10) - 1;
+            const moisNom = moisNoms[moisIndex];
+            
+            return {
+                date: `${parseInt(jour, 10)} ${moisNom} ${annee}`,
+                heure: `${heure}:${minute}`,
+                found: true
+            };
+        }
+        return { found: false };
+    }
+    
     // Fonction pour obtenir le moment de la journée selon les créneaux horaires
     function getMomentDeLaJournee() {
         const now = new Date();
@@ -574,12 +605,28 @@ Objet: [votre objet ici]
             return;
         }
         
-        const now = new Date();
-        const datePoste = now.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
-        const heureMatch = d.match(/([01]?[0-9]|2[0-3])[:h][0-5][0-9]/i);
-        const heureDemande = heureMatch ? heureMatch[0].replace('h', ':') : "--:--";
+        // Extraire la date et l'heure de la demande
+        const dateHeureExtraite = extraireDateHeureDemande(d);
         
-        const labelEntete = (canal === "EMAIL") ? `Mail Odigo du ${datePoste} à ${heureDemande}` : `AM du ${datePoste} à ${heureDemande}`;
+        let datePosteFormatee;
+        let heureDemande;
+        
+        if (dateHeureExtraite.found) {
+            // Utiliser la date et l'heure extraites de la demande
+            datePosteFormatee = dateHeureExtraite.date;
+            heureDemande = dateHeureExtraite.heure;
+        } else {
+            // Utiliser la date et l'heure du poste
+            const now = new Date();
+            const moisNoms = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+            datePosteFormatee = `${now.getDate()} ${moisNoms[now.getMonth()]} ${now.getFullYear()}`;
+            
+            // Rechercher une heure dans la demande
+            const heureMatch = d.match(/([01]?[0-9]|2[0-3])[:h][0-5][0-9]/i);
+            heureDemande = heureMatch ? heureMatch[0].replace('h', ':') : "--:--";
+        }
+        
+        const labelEntete = (canal === "EMAIL") ? `Mail Odigo du ${datePosteFormatee} à ${heureDemande}` : `AM du ${datePosteFormatee} à ${heureDemande}`;
         
         const bloc = `${b || "B : \n\nA : \n\nS : \n\nE : "}\n\n***************************\n\n${labelEntete}\n\nRequête client :\n${d || "(non renseignée)"}\n\nRéponse apportée :\n\n${r || "(non renseignée)"}`;
         
