@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Interface Expert TotalEnergies - Gemini IA</title>
+    <title>Interface Expert TotalEnergies - Gemini IA avec Modèles</title>
     <style>
         body { font-family: 'Segoe UI', Arial, sans-serif; background: #e8eef2; margin: 0; padding: 15px; font-size: 12px; color: #3a4a5c; }
         .wrapper { display: grid; grid-template-columns: 0.9fr 2.4fr 0.9fr; gap: 15px; height: 95vh; max-width: 1600px; margin: 0 auto; }
@@ -30,9 +30,13 @@
         .btn-vider:hover { background: #d0dce4; color: #5a6e7c; }
         .btn-config { background: #8aa0ae; color: white; }
         .btn-config:hover { background: #788e9c; }
+        .btn-analyze { background: #d9a46e; color: white; }
+        .btn-analyze:hover { background: #c9945e; }
+        .btn-apply { background: #6e9ed9; color: white; }
+        .btn-apply:hover { background: #5e8ec9; }
         
-        .btn-group { display: flex; gap: 8px; margin-top: 10px; }
-        .btn-group .btn { margin-top: 0; }
+        .btn-group { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+        .btn-group .btn { margin-top: 0; width: auto; flex: 1; }
         
         .status-bar { background: #ecf1f4; border-radius: 4px; padding: 8px; margin-bottom: 10px; font-size: 11px; color: #5a6e7c; border-left: 3px solid #8aa0ae; }
         .status-error { border-left-color: #c97d6e; background: #fef5f3; color: #b45a4a; }
@@ -53,6 +57,15 @@
         
         .spacer { height: 10px; }
         .heure-info { font-size: 10px; color: #8aa0ae; margin-top: 5px; text-align: right; }
+        
+        .modeles-list { max-height: 200px; overflow-y: auto; margin-top: 8px; }
+        .modele-item { background: #f5f7f9; border: 1px solid #e2e8ec; border-radius: 4px; padding: 6px 8px; margin-bottom: 4px; cursor: pointer; font-size: 11px; }
+        .modele-item:hover { background: #ecf1f4; }
+        .modele-item.selected { background: #d9e4e8; border-color: #8aa0ae; }
+        .modele-nom { font-weight: bold; color: #5a6e7c; }
+        .modele-desc { font-size: 10px; color: #8aa0ae; }
+        .delete-modele { float: right; color: #c97d6e; cursor: pointer; font-weight: bold; }
+        .delete-modele:hover { color: #b45a4a; }
     </style>
 </head>
 <body>
@@ -81,6 +94,10 @@
             <button class="btn btn-primary" onclick="genererAvecGemini()">✨ GÉNÉRER AVEC GEMINI</button>
             <button class="btn btn-secondary" onclick="copierPromptComplet()">📋 COPIER LE PROMPT</button>
         </div>
+        <div class="btn-group">
+            <button class="btn btn-analyze" onclick="analyserEtEnregistrerModele()">📚 ANALYSER & ENREGISTRER COMME MODÈLE</button>
+            <button class="btn btn-apply" onclick="appliquerModeleSelectionne()">📋 APPLIQUER CE MODÈLE</button>
+        </div>
         <div id="statusMessage" class="status-bar">✅ Prêt. Cliquez sur "⚙️ CONFIGURATION API" ci-dessous pour configurer Gemini</div>
     </div>
 
@@ -99,10 +116,19 @@
         <button class="btn btn-vider" onclick="toutVider()">🗑️ VIDER TOUT</button>
 
         <label>📌 BASE</label>
-        <textarea id="base_area" style="flex-grow: 1; min-height: 150px; font-family: monospace; font-size: 12px;" placeholder="B :&#10;A :&#10;S :&#10;E :"></textarea>
+        <textarea id="base_area" style="flex-grow: 1; min-height: 100px; font-family: monospace; font-size: 12px;" placeholder="B :&#10;A :&#10;S :&#10;E :"></textarea>
 
         <div class="spacer"></div>
         <button class="btn btn-primary" onclick="preparerEtCopierHisto()">📝 PRÉPARER ET COPIER HISTORISATION</button>
+        
+        <div class="spacer"></div>
+        
+        <label>📚 MODÈLES ENREGISTRÉS</label>
+        <select id="modeles_sauvegardes" class="model-select" style="margin-bottom: 5px;">
+            <option value="">-- Sélectionner un modèle --</option>
+        </select>
+        <button class="btn btn-apply" onclick="appliquerModeleSelectionne()" style="margin-top: 0;">📋 APPLIQUER LE MODÈLE</button>
+        <button class="btn btn-vider" onclick="supprimerModeleSelectionne()" style="margin-top: 5px;">🗑️ SUPPRIMER LE MODÈLE</button>
         
         <div class="spacer"></div>
         <button class="btn btn-config" onclick="toggleConfigPanel()">⚙️ CONFIGURATION API</button>
@@ -135,10 +161,272 @@
 <script>
     let isGenerating = false;
     
+    // Clé de stockage pour les modèles
+    const STORAGE_KEY_MODELES = 'totalenergies_modeles_enregistres';
+    
+    // Structure d'un modèle enregistré
+    // { id, nom, description, date, demande_exemple, reponse_modele, instructions, canal }
+    
+    // Charger les modèles depuis localStorage
+    function chargerModeles() {
+        const modelesJson = localStorage.getItem(STORAGE_KEY_MODELES);
+        if (modelesJson) {
+            try {
+                return JSON.parse(modelesJson);
+            } catch(e) {
+                return [];
+            }
+        }
+        return [];
+    }
+    
+    // Sauvegarder les modèles dans localStorage
+    function sauvegarderModeles(modeles) {
+        localStorage.setItem(STORAGE_KEY_MODELES, JSON.stringify(modeles));
+        rafraichirListeModeles();
+    }
+    
+    // Rafraîchir la liste déroulante des modèles
+    function rafraichirListeModeles() {
+        const modeles = chargerModeles();
+        const select = document.getElementById('modeles_sauvegardes');
+        select.innerHTML = '<option value="">-- Sélectionner un modèle --</option>';
+        
+        modeles.forEach(modele => {
+            const option = document.createElement('option');
+            option.value = modele.id;
+            option.textContent = `${modele.nom} - ${modele.description.substring(0, 50)}${modele.description.length > 50 ? '...' : ''}`;
+            select.appendChild(option);
+        });
+    }
+    
+    // Analyser la réponse actuelle et enregistrer un modèle
+    function analyserEtEnregistrerModele() {
+        const demande = document.getElementById('demande').value.trim();
+        const reponse = document.getElementById('reponse_client').value.trim();
+        const instructions = document.getElementById('instructions').value.trim();
+        const base = document.getElementById('base_area').value.trim();
+        const canal = document.getElementById('canal_choix').value;
+        
+        if (!demande && !reponse) {
+            showStatus("❌ Aucune demande ou réponse à analyser", "error");
+            return;
+        }
+        
+        // Extraire les variables (dates, montants, etc.) pour les remplacer par XXXX
+        let demandeModele = demanderNomModele();
+        if (!demandeModele) return;
+        
+        const nom = demandeModele.nom;
+        const description = demandeModele.description;
+        
+        // Générer une version template de la demande avec des XXXX
+        let demandeTemplate = anonymiserVariables(demande);
+        let reponseTemplate = anonymiserVariables(reponse);
+        let instructionsTemplate = anonymiserVariables(instructions);
+        let baseTemplate = anonymiserVariables(base);
+        
+        const nouveauModele = {
+            id: Date.now().toString(),
+            nom: nom,
+            description: description,
+            date_creation: new Date().toLocaleString(),
+            demande_exemple: demande,
+            demande_template: demandeTemplate,
+            reponse_exemple: reponse,
+            reponse_template: reponseTemplate,
+            instructions_template: instructionsTemplate,
+            base_template: baseTemplate,
+            canal: canal
+        };
+        
+        const modeles = chargerModeles();
+        modeles.unshift(nouveauModele); // Ajouter au début
+        sauvegarderModeles(modeles);
+        
+        showStatus(`✅ Modèle "${nom}" enregistré avec succès ! Les variables ont été remplacées par XXXX`, "success");
+    }
+    
+    // Demander le nom du modèle à l'utilisateur
+    function demanderNomModele() {
+        return new Promise((resolve) => {
+            const modal = document.createElement('div');
+            modal.style.position = 'fixed';
+            modal.style.top = '0';
+            modal.style.left = '0';
+            modal.style.width = '100%';
+            modal.style.height = '100%';
+            modal.style.backgroundColor = 'rgba(0,0,0,0.5)';
+            modal.style.display = 'flex';
+            modal.style.alignItems = 'center';
+            modal.style.justifyContent = 'center';
+            modal.style.zIndex = '10000';
+            
+            const dialog = document.createElement('div');
+            dialog.style.backgroundColor = 'white';
+            dialog.style.borderRadius = '8px';
+            dialog.style.padding = '20px';
+            dialog.style.width = '400px';
+            dialog.style.maxWidth = '90%';
+            dialog.style.boxShadow = '0 4px 20px rgba(0,0,0,0.2)';
+            
+            dialog.innerHTML = `
+                <h3 style="margin-top:0;">📚 Enregistrer comme modèle</h3>
+                <label>Nom du modèle :</label>
+                <input type="text" id="modele_nom" style="width:100%; padding:8px; margin:8px 0; border:1px solid #ccc; border-radius:4px;" placeholder="Ex: Facture impayée, Déménagement, Panne...">
+                <label>Description (optionnel) :</label>
+                <input type="text" id="modele_desc" style="width:100%; padding:8px; margin:8px 0; border:1px solid #ccc; border-radius:4px;" placeholder="Brève description du type de demande">
+                <div style="display:flex; gap:10px; margin-top:15px;">
+                    <button id="btn_ok" style="flex:1; padding:8px; background:#6c8e9e; color:white; border:none; border-radius:4px; cursor:pointer;">✅ ENREGISTRER</button>
+                    <button id="btn_cancel" style="flex:1; padding:8px; background:#e2e8ec; color:#6a7e8c; border:none; border-radius:4px; cursor:pointer;">❌ ANNULER</button>
+                </div>
+            `;
+            
+            modal.appendChild(dialog);
+            document.body.appendChild(modal);
+            
+            const inputNom = dialog.querySelector('#modele_nom');
+            const inputDesc = dialog.querySelector('#modele_desc');
+            
+            const okBtn = dialog.querySelector('#btn_ok');
+            const cancelBtn = dialog.querySelector('#btn_cancel');
+            
+            const cleanup = () => {
+                if (modal.parentNode) modal.parentNode.removeChild(modal);
+            };
+            
+            okBtn.onclick = () => {
+                const nom = inputNom.value.trim();
+                if (!nom) {
+                    alert("Veuillez entrer un nom pour le modèle");
+                    return;
+                }
+                cleanup();
+                resolve({ nom: nom, description: inputDesc.value.trim() || "Sans description" });
+            };
+            
+            cancelBtn.onclick = () => {
+                cleanup();
+                resolve(null);
+            };
+            
+            inputNom.focus();
+        });
+    }
+    
+    // Fonction pour anonymiser les variables (dates, montants, numéros, etc.)
+    function anonymiserVariables(texte) {
+        if (!texte) return "";
+        
+        let resultat = texte;
+        
+        // Remplacer les dates au format JJ/MM/AAAA ou JJ/MM/AA
+        resultat = resultat.replace(/\b(\d{1,2})\/(\d{1,2})\/(\d{2,4})\b/g, 'XX/XX/XXXX');
+        
+        // Remplacer les dates au format "jour mois année"
+        resultat = resultat.replace(/\b(\d{1,2})\s+(janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)\s+(\d{4})\b/gi, 'XX mois XXXX');
+        
+        // Remplacer les montants en euros
+        resultat = resultat.replace(/\b(\d+[\s]?[\d]*)\s?[€eE](\s?[uU]?[rR]?[oO]?)?\b/g, 'XXXX €');
+        resultat = resultat.replace(/\b(\d+[,.]?\d*)\s?€\b/g, 'XXXX €');
+        
+        // Remplacer les numéros de téléphone
+        resultat = resultat.replace(/\b(0[1-9])(?:\s?[-.]?\s?\d{2}){4}\b/g, 'XX XX XX XX XX');
+        resultat = resultat.replace(/\b(\+33|0033)[\s\-]?[1-9][\s\-]?\d{2}[\s\-]?\d{2}[\s\-]?\d{2}[\s\-]?\d{2}\b/gi, 'XX XX XX XX XX');
+        
+        // Remplacer les numéros de facture / contrat (séquences alphanumériques)
+        resultat = resultat.replace(/\b([A-Z]{2,4}[-\s]?[0-9]{6,12})\b/gi, 'XXXXX');
+        resultat = resultat.replace(/\b(0[0-9]{9,11})\b/g, 'XXXXXXXXXXX');
+        
+        // Remplacer les heures
+        resultat = resultat.replace(/\b([01]?[0-9]|2[0-3])[:h]([0-5][0-9])\b/gi, 'XX:XX');
+        
+        // Remplacer les index (kWh, kVA)
+        resultat = resultat.replace(/\b(\d+[\s]?[\d]*)\s?(kWh|kVA)\b/gi, 'XXXX kWh');
+        
+        return resultat;
+    }
+    
+    // Appliquer un modèle sélectionné
+    function appliquerModeleSelectionne() {
+        const select = document.getElementById('modeles_sauvegardes');
+        const modeleId = select.value;
+        
+        if (!modeleId) {
+            showStatus("❌ Veuillez sélectionner un modèle", "warning");
+            return;
+        }
+        
+        const modeles = chargerModeles();
+        const modele = modeles.find(m => m.id === modeleId);
+        
+        if (!modele) {
+            showStatus("❌ Modèle introuvable", "error");
+            return;
+        }
+        
+        // Appliquer les templates
+        if (modele.demande_template) {
+            document.getElementById('demande').value = modele.demande_template;
+        }
+        
+        if (modele.instructions_template) {
+            document.getElementById('instructions').value = modele.instructions_template;
+        } else if (modele.reponse_template) {
+            // Générer des instructions à partir de la réponse template
+            const instructionsGenerees = `MODÈLE DE RÉPONSE POUR DEMANDES SIMILAIRES :
+            
+Voici un modèle de réponse pour ce type de demande :
+
+${modele.reponse_template}
+
+⚠️ IMPORTANT : Adaptez ce modèle à la demande spécifique du client en remplaçant les XXXX par les informations correctes (dates, montants, etc.).
+Respectez scrupuleusement la structure et le ton de ce modèle.`;
+            document.getElementById('instructions').value = instructionsGenerees;
+        }
+        
+        if (modele.base_template) {
+            document.getElementById('base_area').value = modele.base_template;
+        }
+        
+        if (modele.canal) {
+            document.getElementById('canal_choix').value = modele.canal;
+            majStructureReponse();
+        }
+        
+        showStatus(`✅ Modèle "${modele.nom}" appliqué ! Les XXXX sont à remplacer par les vraies valeurs.`, "success");
+    }
+    
+    // Supprimer le modèle sélectionné
+    function supprimerModeleSelectionne() {
+        const select = document.getElementById('modeles_sauvegardes');
+        const modeleId = select.value;
+        
+        if (!modeleId) {
+            showStatus("❌ Veuillez sélectionner un modèle à supprimer", "warning");
+            return;
+        }
+        
+        if (confirm("Êtes-vous sûr de vouloir supprimer ce modèle ?")) {
+            let modeles = chargerModeles();
+            modeles = modeles.filter(m => m.id !== modeleId);
+            sauvegarderModeles(modeles);
+            select.value = "";
+            showStatus("✅ Modèle supprimé", "success");
+        }
+    }
+    
+    // Afficher les modèles dans un panneau (optionnel)
+    function afficherListeModeles() {
+        const modeles = chargerModeles();
+        if (modeles.length === 0) {
+            showStatus("📭 Aucun modèle enregistré. Créez-en un en analysant une réponse.", "info");
+        } else {
+            showStatus(`📚 ${modeles.length} modèle(s) disponible(s) sélectionnable(s) ci-dessus`, "success");
+        }
+    }
+    
     const PROMPT_BASE = `Demande du client :
-
-
-
 
 EXPERT RELATION CLIENT TOTALENERGIES
 ÉTAPE 1 : ANALYSE PSYCHOLOGIQUE ET CONTEXTUELLE (INTERNE)
@@ -241,7 +529,6 @@ E : Actions possibles sur l'Espace Client ou anticipations indiquées (Indiquer 
     
     // Fonction pour extraire la date et l'heure de la demande
     function extraireDateHeureDemande(texteDemande) {
-        // Recherche des patterns de date comme: 31/03/26 13:28 ou 31/03/2026 13:28
         const datePattern = /(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s+(\d{1,2})[:h](\d{2})/i;
         const match = texteDemande.match(datePattern);
         
@@ -252,7 +539,6 @@ E : Actions possibles sur l'Espace Client ou anticipations indiquées (Indiquer 
             let heure = match[4].padStart(2, '0');
             let minute = match[5];
             
-            // Conversion de l'année si elle est sur 2 chiffres
             if (annee.length === 2) {
                 annee = '20' + annee;
             }
@@ -270,22 +556,18 @@ E : Actions possibles sur l'Espace Client ou anticipations indiquées (Indiquer 
         return { found: false };
     }
     
-    // Fonction pour obtenir le moment de la journée selon les créneaux horaires
     function getMomentDeLaJournee() {
         const now = new Date();
         const heures = now.getHours();
         const minutes = now.getMinutes();
         const heureMinute = heures + minutes / 60;
         
-        // 2h00 à 11h59 -> excellente journée
         if (heureMinute >= 2 && heureMinute < 12) {
             return "une excellente journée";
         }
-        // 12h00 à 16h59 -> excellent après-midi
         else if (heureMinute >= 12 && heureMinute < 17) {
             return "un excellent après-midi";
         }
-        // 17h00 à 1h59 -> excellente soirée
         else {
             return "une excellente soirée";
         }
@@ -304,15 +586,9 @@ E : Actions possibles sur l'Espace Client ou anticipations indiquées (Indiquer 
         } else {
             const now = new Date();
             const heures = now.getHours();
-            const minutes = now.getMinutes();
-            const heureMinute = heures + minutes / 60;
             let salutation = "Bonjour";
-            if (heureMinute >= 17 || heureMinute < 2) {
+            if (heures >= 17 || heures < 2) {
                 salutation = "Bonsoir";
-            } else if (heureMinute >= 2 && heureMinute < 12) {
-                salutation = "Bonjour";
-            } else if (heureMinute >= 12 && heureMinute < 17) {
-                salutation = "Bonjour";
             }
             
             return {
@@ -605,23 +881,19 @@ Objet: [votre objet ici]
             return;
         }
         
-        // Extraire la date et l'heure de la demande
         const dateHeureExtraite = extraireDateHeureDemande(d);
         
         let datePosteFormatee;
         let heureDemande;
         
         if (dateHeureExtraite.found) {
-            // Utiliser la date et l'heure extraites de la demande
             datePosteFormatee = dateHeureExtraite.date;
             heureDemande = dateHeureExtraite.heure;
         } else {
-            // Utiliser la date et l'heure du poste
             const now = new Date();
             const moisNoms = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
             datePosteFormatee = `${now.getDate()} ${moisNoms[now.getMonth()]} ${now.getFullYear()}`;
             
-            // Rechercher une heure dans la demande
             const heureMatch = d.match(/([01]?[0-9]|2[0-3])[:h][0-5][0-9]/i);
             heureDemande = heureMatch ? heureMatch[0].replace('h', ':') : "--:--";
         }
@@ -688,9 +960,9 @@ Objet: [votre objet ici]
         if (savedModel) document.getElementById('model_select').value = savedModel;
         const savedCanal = localStorage.getItem('canal_choix');
         if (savedCanal) document.getElementById('canal_choix').value = savedCanal;
+        rafraichirListeModeles();
     }
     
-    // Mettre à jour l'info toutes les minutes
     setInterval(updateMomentInfo, 60000);
     
     document.addEventListener('DOMContentLoaded', () => {
@@ -712,7 +984,7 @@ Objet: [votre objet ici]
             });
         });
         
-        showStatus("✅ Prêt ! Modèles Gemini 3 disponibles. Sélectionnez-les dans la configuration API.", "success");
+        showStatus("✅ Prêt ! Utilisez 'ANALYSER & ENREGISTRER' pour créer des modèles de réponse réutilisables.", "success");
     });
 </script>
 
