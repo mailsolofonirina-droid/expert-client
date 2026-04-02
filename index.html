@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Interface Expert TotalEnergies - Modèles Cloud</title>
+    <title>Interface Expert TotalEnergies - Gemini IA</title>
     <style>
         body { font-family: 'Segoe UI', Arial, sans-serif; background: #e8eef2; margin: 0; padding: 15px; font-size: 12px; color: #3a4a5c; }
         .wrapper { display: grid; grid-template-columns: 0.9fr 2.4fr 0.9fr; gap: 15px; height: 95vh; max-width: 1600px; margin: 0 auto; }
@@ -30,15 +30,9 @@
         .btn-vider:hover { background: #d0dce4; color: #5a6e7c; }
         .btn-config { background: #8aa0ae; color: white; }
         .btn-config:hover { background: #788e9c; }
-        .btn-analyze { background: #d9a46e; color: white; }
-        .btn-analyze:hover { background: #c9945e; }
-        .btn-apply { background: #6e9ed9; color: white; }
-        .btn-apply:hover { background: #5e8ec9; }
-        .btn-cloud { background: #5a6e7c; color: white; }
-        .btn-cloud:hover { background: #4a5e6c; }
         
-        .btn-group { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
-        .btn-group .btn { margin-top: 0; width: auto; flex: 1; }
+        .btn-group { display: flex; gap: 8px; margin-top: 10px; }
+        .btn-group .btn { margin-top: 0; }
         
         .status-bar { background: #ecf1f4; border-radius: 4px; padding: 8px; margin-bottom: 10px; font-size: 11px; color: #5a6e7c; border-left: 3px solid #8aa0ae; }
         .status-error { border-left-color: #c97d6e; background: #fef5f3; color: #b45a4a; }
@@ -59,10 +53,6 @@
         
         .spacer { height: 10px; }
         .heure-info { font-size: 10px; color: #8aa0ae; margin-top: 5px; text-align: right; }
-        
-        .cloud-panel { background: #e8f0f5; border-radius: 6px; padding: 10px; margin-top: 10px; border: 1px solid #c0d0d8; }
-        .cloud-panel input { width: calc(100% - 16px); padding: 6px; border: 1px solid #cbd8e0; border-radius: 4px; font-size: 11px; margin-top: 4px; }
-        .code-display { background: #fff; border: 1px solid #ddd; border-radius: 4px; padding: 8px; font-family: monospace; font-size: 10px; word-break: break-all; margin-top: 8px; max-height: 100px; overflow: auto; }
     </style>
 </head>
 <body>
@@ -91,20 +81,16 @@
             <button class="btn btn-primary" onclick="genererAvecGemini()">✨ GÉNÉRER AVEC GEMINI</button>
             <button class="btn btn-secondary" onclick="copierPromptComplet()">📋 COPIER LE PROMPT</button>
         </div>
-        <div class="btn-group">
-            <button class="btn btn-analyze" onclick="analyserEtEnregistrerModele()">📚 ANALYSER & ENREGISTRER</button>
-            <button class="btn btn-apply" onclick="appliquerModeleSelectionne()">📋 APPLIQUER CE MODÈLE</button>
-        </div>
-        <div id="statusMessage" class="status-bar">✅ Prêt.</div>
+        <div id="statusMessage" class="status-bar">✅ Prêt. Cliquez sur "⚙️ CONFIGURATION API" ci-dessous pour configurer Gemini</div>
     </div>
 
     <div class="column">
         <h2>✍️ Traitement de la réponse</h2>
-        <label>Rédaction (Police 18px)</label>
+        <label>Rédaction (Police 18px) - La structure s'affiche automatiquement</label>
         <textarea id="reponse_client" spellcheck="true"></textarea>
         
-        <button class="btn btn-success" onclick="copierTexte('reponse_client')">📋 COPIER LA RÉPONSE</button>
-        <button class="btn btn-secondary" onclick="reinitialiserStructure()">🔄 RÉINITIALISER</button>
+        <button class="btn btn-success" onclick="copierTexte('reponse_client')">📋 COPIER LA RÉPONSE CLIENT</button>
+        <button class="btn btn-secondary" onclick="reinitialiserStructure()">🔄 RÉINITIALISER LA STRUCTURE</button>
         <div id="momentInfo" class="heure-info"></div>
     </div>
 
@@ -113,30 +99,10 @@
         <button class="btn btn-vider" onclick="toutVider()">🗑️ VIDER TOUT</button>
 
         <label>📌 BASE</label>
-        <textarea id="base_area" style="flex-grow: 1; min-height: 100px; font-family: monospace; font-size: 12px;" placeholder="B :&#10;A :&#10;S :&#10;E :"></textarea>
+        <textarea id="base_area" style="flex-grow: 1; min-height: 150px; font-family: monospace; font-size: 12px;" placeholder="B :&#10;A :&#10;S :&#10;E :"></textarea>
 
-        <button class="btn btn-primary" onclick="preparerEtCopierHisto()">📝 COPIER HISTORISATION</button>
-        
         <div class="spacer"></div>
-        
-        <label>📚 MES MODÈLES</label>
-        <select id="modeles_sauvegardes" class="model-select" style="margin-bottom: 5px;">
-            <option value="">-- Sélectionner un modèle --</option>
-        </select>
-        <div class="btn-group">
-            <button class="btn btn-apply" onclick="appliquerModeleSelectionne()" style="margin-top: 0;">📋 APPLIQUER</button>
-            <button class="btn btn-vider" onclick="supprimerModeleSelectionne()">🗑️ SUPPRIMER</button>
-        </div>
-        
-        <div class="cloud-panel">
-            <strong>☁️ SAUVEGARDE CLOUD</strong>
-            <input type="email" id="cloud_email" placeholder="Votre email pour sauvegarde">
-            <div class="btn-group" style="margin-top: 8px;">
-                <button class="btn btn-cloud" onclick="exporterModelesParEmail()">📤 ENVOYER MODÈLES PAR EMAIL</button>
-                <button class="btn btn-cloud" onclick="importerModeles()">📥 IMPORTER MODÈLES</button>
-            </div>
-            <div class="info-text">Envoi d'un email avec TOUS vos modèles. Recevez le code et réimportez-le sur un autre ordinateur.</div>
-        </div>
+        <button class="btn btn-primary" onclick="preparerEtCopierHisto()">📝 PRÉPARER ET COPIER HISTORISATION</button>
         
         <div class="spacer"></div>
         <button class="btn btn-config" onclick="toggleConfigPanel()">⚙️ CONFIGURATION API</button>
@@ -144,13 +110,23 @@
         <div id="configPanel" class="config-panel">
             <strong>🔑 Configuration API Gemini</strong>
             <input type="password" id="api_key" placeholder="Votre clé API Gemini" autocomplete="off">
+            <label style="margin-top: 8px;">🤖 Modèle Gemini <span class="model-badge">✨ NOUVEAUTÉS GEMINI 3</span></label>
             <select id="model_select" class="model-select">
-                <optgroup label="🌟 Gemini 3 - Dernière génération">
+                <optgroup label="🌟 Gemini 3 - Dernière génération (2026)">
+                    <option value="gemini-3-pro-preview">🚀 Gemini 3 Pro (Preview) - Le plus puissant</option>
+                    <option value="gemini-3-flash-preview">⚡ Gemini 3 Flash (Preview) - Rapide et efficace</option>
+                    <option value="gemini-3-flash-lite-preview">💨 Gemini 3 Flash Lite (Preview) - Léger et économique</option>
+                </optgroup>
+                <optgroup label="📌 Gemini 2.5 - Stable">
+                    <option value="gemini-2.5-flash">✨ Gemini 2.5 Flash (stable)</option>
                     <option value="gemini-2.0-flash">⚡ Gemini 2.0 Flash</option>
                     <option value="gemini-2.0-flash-lite">💨 Gemini 2.0 Flash Lite</option>
                 </optgroup>
             </select>
-            <div class="info-text">Obtenez une clé sur <a href="https://aistudio.google.com/apikey" target="_blank">Google AI Studio</a></div>
+            <button class="test-btn" onclick="testerCleApi()">🔍 Tester la clé API</button>
+            <button class="test-btn" onclick="verifierModelesDisponibles()" style="background: #6c8e9e;">📋 Vérifier les modèles disponibles</button>
+            <div class="info-text">Obtenez une clé sur <a href="https://aistudio.google.com/apikey" target="_blank">Google AI Studio</a> (gratuite)</div>
+            <div class="info-text" style="color: #b8860b; margin-top: 8px;">💡 <strong>Astuce :</strong> Pour Gemini 3, assurez-vous d'avoir activé les preview models</div>
         </div>
     </div>
 
@@ -158,423 +134,228 @@
 
 <script>
     let isGenerating = false;
-    const STORAGE_KEY_MODELES = 'totalenergies_modeles_enregistres';
     
-    // Configuration email (utilisation d'un service gratuit)
-    const EMAIL_CONFIG = {
-        // Utilisation d'un service de stockage gratuit (JSONBin.io ou Pastebin-like)
-        // Alternative: Envoi d'email via mailto:
-        storageUrl: 'https://api.jsonbin.io/v3/b',
-        // Pour utiliser JSONBin, vous devez créer un compte gratuit sur jsonbin.io
-        // Sinon, on utilise l'export manuel
-    };
+    const PROMPT_BASE = `Demande du client :
+
+
+
+
+EXPERT RELATION CLIENT TOTALENERGIES
+ÉTAPE 1 : ANALYSE PSYCHOLOGIQUE ET CONTEXTUELLE (INTERNE)
+Avant de rédiger, analysez silencieusement le message du client :
+
+Sentiment : (Neutre / Agacé / Très Mécontent / Urgent).
+
+Effort Client : Le client a-t-il déjà fait des démarches ou envoyé des pièces ? (Oui/Non).
+
+Posture : - Si Agacé : Empathie immédiate et validation de la frustration.
+
+Si Effort fourni : Valorisation immédiate de sa proactivité ("Je vous félicite pour...", "Je vous remercie pour votre réactivité...").
+
+L'ÉTAPE 1 doit être réalisée sous forme de réflexion interne. Ne rédigez pas cette analyse dans la réponse finale, utilisez-la uniquement pour orienter le ton et la structure de votre message.
+
+ÉTAPE 2 : DIRECTIVES DE RÉDACTION (STRICTES)
+
+1. Identité et Posture :
+
+Persona : Conseiller expert du service client TotalEnergies.
+
+Ton : Chaleureux, rassurant et pédagogue.
+
+Fusion d'accueil : La première phrase doit fusionner l'accueil et la prise en charge, adaptée à l'émotion ou à la situation. Variez les formulations pour éviter toute répétition automatique.
+
+2. Articulation et Fluidité :
+
+Rédaction naturelle, sans exagération des connecteurs logiques.
+
+Séparez chaque idée par un paragraphe distinct.
+
+Utilisez le "je" pour vos actions et le "nous" pour représenter TotalEnergies.
+
+3. Règles de Construction Stricte :
+
+Format : Texte simple (e-mail), sans listes à puces ni tirets (sauf section BASE).
+
+Syntaxes : Mode déclaratif. Utilisez des formes de courtoisie ("Je vous invite à", "Je vous prie de").
+
+Chiffres et Unités : Nombres en chiffres (ex: 2 jours, 150 €). Unités obligatoires : €, kWh, kVA.
+
+Format des Dates : "jour mois année" avec le mois en lettres (ex : 5 mars 2026). Interdiction des barres obliques (/).
+
+Temps : Futur simple pour les actions à venir ("Je ferai").
+
+Rubriques Espace Client : Respecter strictement la mise en page : "Nom de la rubrique > Sous-rubrique". N'inventez aucune rubrique. Si aucune n'est fournie, ne proposez pas de chemin.
+
+Pièces jointes / Liens : Ne supprimez jamais les liens fournis dans les instructions de réponse.
+
+Identité Client : NOM, PRÉNOM, ADRESSE en MAJUSCULES. Civilité : Seule l'initiale est au majuscule (Madame/Monsieur).
+
+Majuscules Systématiques : Les noms des services internes doivent porter une majuscule sur chaque initiale (ex: Service Technique, Service Déménagement, Service Paiement).
+
+4. Lexique et Ponctuation :
+
+Mots à bannir : problème, malheureusement, recommander, engager, engagement, meilleurs délais, impatience, co-titulaire.
+
+Respecter : ENEDIS, gestionnaire du réseau d'électricité ; GRDF, gestionnaire du réseau de gaz ; Heures Pleines / Heures Creuses ; chèque énergie.
+
+Régle de ponctuation pour la rénumération : Virgule (,) en fin de ligne si la pensée est incomplète, point (.) si la phrase est complète. La dernière ligne finit toujours par un point.
+
+5. Annuaire des Contacts :
+
+Service Paiement : 09 70 80 65 45 (lun - sam, 9h - 19h).
+
+Service Technique / Clientèle : 09 70 80 69 69 (lun - sam, 9h - 19h).
+
+Agence de Services et de Paiements (ASP) : 08 05 20 48 05.
+
+Service Commercial : 30 99 (8h - 20h).
+
+Engagement Satisfaction Client et Pédagogie :
+
+Valorisation et Allié du Client : Adoptez une posture de partenaire conseil. Si une demande n'est pas recevable, ne vous contentez pas d'un refus ; expliquez le "pourquoi" pédagogiquement et basculez immédiatement sur une solution alternative ou un conseil utile (méthode du pivot positif).
+
+Transparence et Clarté : Évitez le jargon technique. Expliquez les calculs ou les règles de gestion de manière simple pour que le client comprenne la situation, ce qui réduit la frustration même en cas de désaccord.
+
+Preuve d'Étude du Dossier : Pour montrer que la demande a été traitée avec soin, citez systématiquement des éléments précis (montant exact TTC, numéro de facture, dates ou index de consommation....).
+
+IMPORTANT : 
+- Pour le canal EMAIL : Génère UNIQUEMENT l'OBJET et le CORPS du message. L'objet doit être concis et précis. Le corps est le contenu principal du message.
+- Pour le canal AM (Application Mobile) : Génère UNIQUEMENT le CORPS du message.
+- Ne génère PAS les salutations, formules de politesse, signature, BP, ni "Mme,". Ces éléments seront ajoutés automatiquement par l'interface.
+
+Pour chaque réponse, il faut générer le BASE à la fin, séparé par "***".
+
+Si j'ai mentionné da la réonse que la demande est transmise à un autre service, fournissez un commentaire explicatif pour ce service avant la section BASE. Pour qu'il puisse comprends le traitement qu'on attend d'eux.
+
+Séparateur ()*.
+
+Section BASE (Format Stricte) :
+
+B : Résumé de la demande en une phrase simple ("Le client demande/souhaite").
+
+A : Informations factuelles constatées sur le dossier (ligne vide si aucune).
+
+S : Résumé de la solution apportée ("J'ai informé/fait/proposé/expliqué").
+
+E : Actions possibles sur l'Espace Client ou anticipations indiquées (Indiquer n/a si rien).`;
     
-    // Charger les modèles depuis localStorage
-    function chargerModeles() {
-        const modelesJson = localStorage.getItem(STORAGE_KEY_MODELES);
-        if (modelesJson) {
-            try {
-                return JSON.parse(modelesJson);
-            } catch(e) {
-                return [];
-            }
-        }
-        return [];
-    }
-    
-    // Sauvegarder les modèles dans localStorage
-    function sauvegarderModeles(modeles) {
-        localStorage.setItem(STORAGE_KEY_MODELES, JSON.stringify(modeles));
-        rafraichirListeModeles();
-        return modeles;
-    }
-    
-    // Ajouter un modèle
-    function ajouterModele(modele) {
-        const modeles = chargerModeles();
-        modeles.unshift(modele);
-        sauvegarderModeles(modeles);
-        showStatus(`✅ Modèle "${modele.nom}" enregistré !`, "success");
-        return modele;
-    }
-    
-    // Rafraîchir la liste
-    function rafraichirListeModeles() {
-        const modeles = chargerModeles();
-        const select = document.getElementById('modeles_sauvegardes');
-        select.innerHTML = '<option value="">-- Sélectionner un modèle --</option>';
+    // Fonction pour extraire la date et l'heure de la demande
+    function extraireDateHeureDemande(texteDemande) {
+        // Recherche des patterns de date comme: 31/03/26 13:28 ou 31/03/2026 13:28
+        const datePattern = /(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s+(\d{1,2})[:h](\d{2})/i;
+        const match = texteDemande.match(datePattern);
         
-        modeles.forEach(modele => {
-            const option = document.createElement('option');
-            option.value = modele.id;
-            option.textContent = `${modele.nom} - ${modele.description.substring(0, 50)}${modele.description.length > 50 ? '...' : ''}`;
-            select.appendChild(option);
-        });
-    }
-    
-    // Analyser et enregistrer un modèle (version corrigée)
-    async function analyserEtEnregistrerModele() {
-        const demande = document.getElementById('demande').value.trim();
-        const reponse = document.getElementById('reponse_client').value.trim();
-        const instructions = document.getElementById('instructions').value.trim();
-        const base = document.getElementById('base_area').value.trim();
-        const canal = document.getElementById('canal_choix').value;
-        
-        if (!demande && !reponse) {
-            showStatus("❌ Aucune demande ou réponse à analyser", "error");
-            return;
-        }
-        
-        // Demander le nom du modèle
-        const modeleInfo = await demanderNomModele();
-        if (!modeleInfo) return;
-        
-        // Générer les templates avec variables anonymisées
-        const demandeTemplate = anonymiserVariables(demande);
-        const reponseTemplate = anonymiserVariables(reponse);
-        const instructionsTemplate = anonymiserVariables(instructions);
-        const baseTemplate = anonymiserVariables(base);
-        
-        const nouveauModele = {
-            id: Date.now().toString(),
-            nom: modeleInfo.nom,
-            description: modeleInfo.description || "Sans description",
-            date_creation: new Date().toLocaleString(),
-            demande_originale: demande.substring(0, 500),
-            demande_template: demandeTemplate,
-            reponse_template: reponseTemplate,
-            instructions_template: instructionsTemplate,
-            base_template: baseTemplate,
-            canal: canal
-        };
-        
-        ajouterModele(nouveauModele);
-    }
-    
-    // Boîte de dialogue pour le nom du modèle
-    function demanderNomModele() {
-        return new Promise((resolve) => {
-            const modal = document.createElement('div');
-            modal.style.position = 'fixed';
-            modal.style.top = '0';
-            modal.style.left = '0';
-            modal.style.width = '100%';
-            modal.style.height = '100%';
-            modal.style.backgroundColor = 'rgba(0,0,0,0.5)';
-            modal.style.display = 'flex';
-            modal.style.alignItems = 'center';
-            modal.style.justifyContent = 'center';
-            modal.style.zIndex = '10000';
+        if (match) {
+            let jour = match[1].padStart(2, '0');
+            let mois = match[2].padStart(2, '0');
+            let annee = match[3];
+            let heure = match[4].padStart(2, '0');
+            let minute = match[5];
             
-            const dialog = document.createElement('div');
-            dialog.style.backgroundColor = 'white';
-            dialog.style.borderRadius = '8px';
-            dialog.style.padding = '20px';
-            dialog.style.width = '400px';
-            dialog.style.maxWidth = '90%';
-            dialog.style.boxShadow = '0 4px 20px rgba(0,0,0,0.2)';
-            
-            dialog.innerHTML = `
-                <h3 style="margin-top:0;">📚 Enregistrer comme modèle</h3>
-                <label>Nom du modèle :</label>
-                <input type="text" id="modele_nom" style="width:100%; padding:8px; margin:8px 0; border:1px solid #ccc; border-radius:4px;" placeholder="Ex: Facture impayée, Déménagement...">
-                <label>Description :</label>
-                <input type="text" id="modele_desc" style="width:100%; padding:8px; margin:8px 0; border:1px solid #ccc; border-radius:4px;" placeholder="Brève description">
-                <div style="display:flex; gap:10px; margin-top:15px;">
-                    <button id="btn_ok" style="flex:1; padding:8px; background:#6c8e9e; color:white; border:none; border-radius:4px; cursor:pointer;">✅ ENREGISTRER</button>
-                    <button id="btn_cancel" style="flex:1; padding:8px; background:#e2e8ec; color:#6a7e8c; border:none; border-radius:4px; cursor:pointer;">❌ ANNULER</button>
-                </div>
-            `;
-            
-            modal.appendChild(dialog);
-            document.body.appendChild(modal);
-            
-            const inputNom = dialog.querySelector('#modele_nom');
-            const inputDesc = dialog.querySelector('#modele_desc');
-            
-            const okBtn = dialog.querySelector('#btn_ok');
-            const cancelBtn = dialog.querySelector('#btn_cancel');
-            
-            const cleanup = () => {
-                if (modal.parentNode) modal.parentNode.removeChild(modal);
-            };
-            
-            okBtn.onclick = () => {
-                const nom = inputNom.value.trim();
-                if (!nom) {
-                    alert("Veuillez entrer un nom");
-                    return;
-                }
-                cleanup();
-                resolve({ nom: nom, description: inputDesc.value.trim() });
-            };
-            
-            cancelBtn.onclick = () => {
-                cleanup();
-                resolve(null);
-            };
-            
-            inputNom.focus();
-        });
-    }
-    
-    // Anonymiser les variables
-    function anonymiserVariables(texte) {
-        if (!texte) return "";
-        let resultat = texte;
-        resultat = resultat.replace(/\b(\d{1,2})\/(\d{1,2})\/(\d{2,4})\b/g, 'XX/XX/XXXX');
-        resultat = resultat.replace(/\b(\d+[\s]?[\d]*)\s?[€eE]/g, 'XXXX €');
-        resultat = resultat.replace(/\b(0[1-9])(?:\s?[-.]?\s?\d{2}){4}\b/g, 'XX XX XX XX XX');
-        resultat = resultat.replace(/\b([01]?[0-9]|2[0-3])[:h]([0-5][0-9])\b/gi, 'XX:XX');
-        return resultat;
-    }
-    
-    // Appliquer un modèle
-    function appliquerModeleSelectionne() {
-        const select = document.getElementById('modeles_sauvegardes');
-        const modeleId = select.value;
-        
-        if (!modeleId) {
-            showStatus("❌ Sélectionnez un modèle", "warning");
-            return;
-        }
-        
-        const modeles = chargerModeles();
-        const modele = modeles.find(m => m.id === modeleId);
-        
-        if (!modele) {
-            showStatus("❌ Modèle introuvable", "error");
-            return;
-        }
-        
-        if (modele.demande_template) {
-            document.getElementById('demande').value = modele.demande_template;
-        }
-        if (modele.instructions_template) {
-            document.getElementById('instructions').value = modele.instructions_template;
-        }
-        if (modele.base_template) {
-            document.getElementById('base_area').value = modele.base_template;
-        }
-        if (modele.canal) {
-            document.getElementById('canal_choix').value = modele.canal;
-            majStructureReponse();
-        }
-        
-        showStatus(`✅ Modèle "${modele.nom}" appliqué ! Remplacez les XXXX`, "success");
-    }
-    
-    // Supprimer un modèle
-    function supprimerModeleSelectionne() {
-        const select = document.getElementById('modeles_sauvegardes');
-        const modeleId = select.value;
-        
-        if (!modeleId) {
-            showStatus("❌ Sélectionnez un modèle", "warning");
-            return;
-        }
-        
-        if (confirm("Supprimer ce modèle ?")) {
-            let modeles = chargerModeles();
-            modeles = modeles.filter(m => m.id !== modeleId);
-            sauvegarderModeles(modeles);
-            select.value = "";
-            showStatus("✅ Modèle supprimé", "success");
-        }
-    }
-    
-    // EXPORT par EMAIL - Génère un code et l'envoie par email
-    function exporterModelesParEmail() {
-        const email = document.getElementById('cloud_email').value.trim();
-        if (!email) {
-            showStatus("❌ Entrez votre email", "error");
-            return;
-        }
-        
-        const modeles = chargerModeles();
-        if (modeles.length === 0) {
-            showStatus("❌ Aucun modèle à exporter", "warning");
-            return;
-        }
-        
-        // Générer un code de sauvegarde
-        const backupData = {
-            version: "1.0",
-            date: new Date().toISOString(),
-            modeles: modeles
-        };
-        
-        const backupCode = btoa(unescape(encodeURIComponent(JSON.stringify(backupData))));
-        
-        // Créer le contenu de l'email
-        const subject = encodeURIComponent("Sauvegarde modèles TotalEnergies");
-        const body = encodeURIComponent(
-            "Voici votre sauvegarde des modèles de réponse.\n\n" +
-            "=== INSTRUCTIONS D'IMPORTATION ===\n" +
-            "1. Copiez le code ci-dessous\n" +
-            "2. Sur votre autre ordinateur, cliquez sur 'IMPORTER MODÈLES'\n" +
-            "3. Collez le code et validez\n\n" +
-            "=== VOTRE CODE DE SAUVEGARDE ===\n\n" +
-            backupCode + "\n\n" +
-            "=== FIN DU CODE ===\n\n" +
-            `Nombre de modèles: ${modeles.length}\n` +
-            `Modèles: ${modeles.map(m => m.nom).join(", ")}\n\n` +
-            "Conservez ce code précieusement."
-        );
-        
-        // Ouvrir l'application email par défaut
-        window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
-        
-        // Aussi afficher le code dans l'interface
-        showBackupCode(backupCode, modeles.length);
-        
-        showStatus("📧 Email préparé ! Vérifiez votre client email et envoyez.", "success");
-    }
-    
-    // Afficher le code de sauvegarde
-    function showBackupCode(code, count) {
-        const modal = document.createElement('div');
-        modal.style.position = 'fixed';
-        modal.style.top = '0';
-        modal.style.left = '0';
-        modal.style.width = '100%';
-        modal.style.height = '100%';
-        modal.style.backgroundColor = 'rgba(0,0,0,0.5)';
-        modal.style.display = 'flex';
-        modal.style.alignItems = 'center';
-        modal.style.justifyContent = 'center';
-        modal.style.zIndex = '10001';
-        
-        const dialog = document.createElement('div');
-        dialog.style.backgroundColor = 'white';
-        dialog.style.borderRadius = '8px';
-        dialog.style.padding = '20px';
-        dialog.style.width = '500px';
-        dialog.style.maxWidth = '90%';
-        
-        dialog.innerHTML = `
-            <h3>📋 Code de sauvegarde</h3>
-            <p>${count} modèle(s) exporté(s). Copiez ce code :</p>
-            <textarea style="width:100%; height:150px; font-family:monospace; font-size:11px; padding:8px; border:1px solid #ccc; border-radius:4px;" readonly>${code}</textarea>
-            <p style="font-size:11px; color:#666;">Sur un autre ordinateur, cliquez sur "IMPORTER MODÈLES" et collez ce code.</p>
-            <button id="closeModal" style="width:100%; padding:10px; background:#6c8e9e; color:white; border:none; border-radius:4px; cursor:pointer;">FERMER</button>
-        `;
-        
-        modal.appendChild(dialog);
-        document.body.appendChild(modal);
-        
-        document.getElementById('closeModal').onclick = () => {
-            modal.remove();
-        };
-    }
-    
-    // IMPORT de modèles depuis un code
-    function importerModeles() {
-        const modal = document.createElement('div');
-        modal.style.position = 'fixed';
-        modal.style.top = '0';
-        modal.style.left = '0';
-        modal.style.width = '100%';
-        modal.style.height = '100%';
-        modal.style.backgroundColor = 'rgba(0,0,0,0.5)';
-        modal.style.display = 'flex';
-        modal.style.alignItems = 'center';
-        modal.style.justifyContent = 'center';
-        modal.style.zIndex = '10001';
-        
-        const dialog = document.createElement('div');
-        dialog.style.backgroundColor = 'white';
-        dialog.style.borderRadius = '8px';
-        dialog.style.padding = '20px';
-        dialog.style.width = '500px';
-        dialog.style.maxWidth = '90%';
-        
-        dialog.innerHTML = `
-            <h3>📥 Importer des modèles</h3>
-            <p>Collez le code de sauvegarde reçu par email :</p>
-            <textarea id="importCode" style="width:100%; height:120px; font-family:monospace; font-size:11px; padding:8px; border:1px solid #ccc; border-radius:4px;" placeholder="Collez votre code ici..."></textarea>
-            <div style="display:flex; gap:10px; margin-top:15px;">
-                <button id="btnImport" style="flex:1; padding:10px; background:#6c8e9e; color:white; border:none; border-radius:4px; cursor:pointer;">📥 IMPORTER</button>
-                <button id="btnCancel" style="flex:1; padding:10px; background:#e2e8ec; color:#6a7e8c; border:none; border-radius:4px; cursor:pointer;">ANNULER</button>
-            </div>
-        `;
-        
-        modal.appendChild(dialog);
-        document.body.appendChild(modal);
-        
-        const btnImport = dialog.querySelector('#btnImport');
-        const btnCancel = dialog.querySelector('#btnCancel');
-        const textarea = dialog.querySelector('#importCode');
-        
-        btnImport.onclick = () => {
-            const code = textarea.value.trim();
-            if (!code) {
-                alert("Entrez un code valide");
-                return;
+            // Conversion de l'année si elle est sur 2 chiffres
+            if (annee.length === 2) {
+                annee = '20' + annee;
             }
             
-            try {
-                const decoded = JSON.parse(decodeURIComponent(escape(atob(code))));
-                if (decoded.modeles && Array.isArray(decoded.modeles)) {
-                    // Fusionner avec les modèles existants
-                    const modelesExistants = chargerModeles();
-                    const nouveauxModeles = [...decoded.modeles, ...modelesExistants];
-                    // Éviter les doublons basés sur l'ID
-                    const idsUniques = new Set();
-                    const modelesUniques = nouveauxModeles.filter(m => {
-                        if (idsUniques.has(m.id)) return false;
-                        idsUniques.add(m.id);
-                        return true;
-                    });
-                    sauvegarderModeles(modelesUniques);
-                    showStatus(`✅ ${decoded.modeles.length} modèle(s) importé(s) !`, "success");
-                    modal.remove();
-                } else {
-                    throw new Error("Format invalide");
-                }
-            } catch(e) {
-                alert("Code invalide. Vérifiez que vous avez copié tout le code.");
-            }
-        };
-        
-        btnCancel.onclick = () => modal.remove();
-        textarea.focus();
+            const moisNoms = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+            const moisIndex = parseInt(mois, 10) - 1;
+            const moisNom = moisNoms[moisIndex];
+            
+            return {
+                date: `${parseInt(jour, 10)} ${moisNom} ${annee}`,
+                heure: `${heure}:${minute}`,
+                found: true
+            };
+        }
+        return { found: false };
     }
     
-    // ============ FONCTIONS EXISTANTES (conservées) ============
-    
-    const PROMPT_BASE = `Demande du client :\n\nEXPERT RELATION CLIENT TOTALENERGIES\nÉTAPE 1 : ANALYSE PSYCHOLOGIQUE ET CONTEXTUELLE (INTERNE)\n... (contenu complet) ...`;
-    
+    // Fonction pour obtenir le moment de la journée selon les créneaux horaires
     function getMomentDeLaJournee() {
         const now = new Date();
         const heures = now.getHours();
-        if (heures >= 2 && heures < 12) return "une excellente journée";
-        if (heures >= 12 && heures < 17) return "un excellent après-midi";
-        return "une excellente soirée";
+        const minutes = now.getMinutes();
+        const heureMinute = heures + minutes / 60;
+        
+        // 2h00 à 11h59 -> excellente journée
+        if (heureMinute >= 2 && heureMinute < 12) {
+            return "une excellente journée";
+        }
+        // 12h00 à 16h59 -> excellent après-midi
+        else if (heureMinute >= 12 && heureMinute < 17) {
+            return "un excellent après-midi";
+        }
+        // 17h00 à 1h59 -> excellente soirée
+        else {
+            return "une excellente soirée";
+        }
     }
     
     function getStructureComplete() {
         const canal = document.getElementById('canal_choix').value;
         const momentPhrase = getMomentDeLaJournee();
+        
         if (canal === "EMAIL") {
-            return { entete: "BP : \n\nMme ,\n\n", signature: `\n\nJe reste à votre disposition et vous souhaite ${momentPhrase}.\n\nCordialement,` };
+            return {
+                entete: `BP : \n\nMme ,\n\n`,
+                corps: "",
+                signature: `\n\nJe reste à votre disposition pour toute information complémentaire et vous souhaite de passer ${momentPhrase}.\n\nCordialement,`
+            };
         } else {
-            return { entete: "Bonjour Monsieur,\n\n", signature: `\n\nJe reste à votre disposition et vous souhaite ${momentPhrase}.\n\nCordialement,\n\nSolofonirina` };
+            const now = new Date();
+            const heures = now.getHours();
+            const minutes = now.getMinutes();
+            const heureMinute = heures + minutes / 60;
+            let salutation = "Bonjour";
+            if (heureMinute >= 17 || heureMinute < 2) {
+                salutation = "Bonsoir";
+            } else if (heureMinute >= 2 && heureMinute < 12) {
+                salutation = "Bonjour";
+            } else if (heureMinute >= 12 && heureMinute < 17) {
+                salutation = "Bonjour";
+            }
+            
+            return {
+                entete: `${salutation} Monsieur,\n\n`,
+                corps: "",
+                signature: `\n\nJe reste à votre disposition pour toute information complémentaire et vous souhaite de passer ${momentPhrase}.\n\nCordialement,\n\nSolofonirina`
+            };
         }
     }
     
     function majStructureReponse() {
-        const structure = getStructureComplete();
         const reponseArea = document.getElementById('reponse_client');
-        if (!reponseArea.value.trim()) {
-            reponseArea.value = structure.entete + structure.signature;
+        const currentContent = reponseArea.value;
+        const canal = document.getElementById('canal_choix').value;
+        const structure = getStructureComplete();
+        
+        if (canal === "EMAIL") {
+            const hasEmailStructure = currentContent.includes('Objet :') && currentContent.includes('BP :');
+            if (!hasEmailStructure || !currentContent.trim()) {
+                reponseArea.value = structure.entete + structure.signature;
+            }
+        } else {
+            const hasMobileStructure = (currentContent.includes('Bonjour') || currentContent.includes('Bonsoir'));
+            if (!hasMobileStructure || !currentContent.trim()) {
+                reponseArea.value = structure.entete + structure.signature;
+            }
         }
         updateMomentInfo();
     }
     
     function updateMomentInfo() {
         const moment = getMomentDeLaJournee();
-        document.getElementById('momentInfo').innerHTML = `🕐 ${moment.toUpperCase()}`;
+        const infoDiv = document.getElementById('momentInfo');
+        if (infoDiv) {
+            const now = new Date();
+            const heures = now.getHours();
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            let plage = "";
+            if (heures >= 2 && heures <= 11) plage = "2h-11h59";
+            else if (heures >= 12 && heures <= 16) plage = "12h-16h59";
+            else plage = "17h-1h59";
+            infoDiv.innerHTML = `🕐 ${moment.toUpperCase()} (${plage} - ${heures}:${minutes})`;
+        }
     }
     
     function reinitialiserStructure() {
@@ -584,7 +365,59 @@
     }
     
     function toggleConfigPanel() {
-        document.getElementById('configPanel').classList.toggle('show');
+        const panel = document.getElementById('configPanel');
+        panel.classList.toggle('show');
+    }
+    
+    async function testerCleApi() {
+        const apiKey = document.getElementById('api_key').value.trim();
+        if (!apiKey) {
+            showStatus("❌ Veuillez entrer une clé API d'abord", "error");
+            return;
+        }
+        
+        showStatus("<span class='loading'></span> Test de la clé API...", "info");
+        
+        try {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1/models?key=${apiKey}`);
+            const data = await response.json();
+            
+            if (response.ok) {
+                const modelCount = data.models?.length || 0;
+                showStatus(`✅ Clé valide ! ${modelCount} modèles disponibles.`, "success");
+            } else {
+                showStatus(`❌ Clé invalide: ${data.error?.message || 'Erreur inconnue'}`, "error");
+            }
+        } catch (error) {
+            showStatus(`❌ Erreur: ${error.message}`, "error");
+        }
+    }
+    
+    async function verifierModelesDisponibles() {
+        const apiKey = document.getElementById('api_key').value.trim();
+        if (!apiKey) {
+            showStatus("❌ Veuillez entrer une clé API d'abord", "error");
+            return;
+        }
+        
+        showStatus("<span class='loading'></span> Récupération des modèles disponibles...", "info");
+        
+        try {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1/models?key=${apiKey}`);
+            const data = await response.json();
+            
+            if (response.ok && data.models) {
+                const modelsList = data.models.map(m => m.name.replace('models/', '')).join(', ');
+                const gemini3Models = data.models.filter(m => m.name.includes('gemini-3')).length;
+                const gemini25Models = data.models.filter(m => m.name.includes('gemini-2.5')).length;
+                
+                showStatus(`📋 Modèles: ${gemini3Models} Gemini 3, ${gemini25Models} Gemini 2.5. Liste: ${modelsList.substring(0, 150)}...`, "success");
+            } else {
+                showStatus(`❌ Erreur: ${data.error?.message || 'Erreur'}`, "error");
+            }
+        } catch (error) {
+            showStatus(`❌ Erreur: ${error.message}`, "error");
+        }
     }
     
     function showStatus(message, type = "info") {
@@ -595,7 +428,7 @@
             if (document.getElementById('statusMessage').innerHTML === message) {
                 statusDiv.className = "status-bar";
             }
-        }, 5000);
+        }, 6000);
     }
     
     function construirePromptComplet() {
@@ -603,68 +436,283 @@
         const dem = document.getElementById('demande').value.trim();
         const inst = document.getElementById('instructions').value.trim();
         const canal = document.getElementById('canal_choix').value;
-        if (!dem) throw new Error("Veuillez saisir une demande");
-        let instructionCanal = canal === "EMAIL" ? "\n\nINSTRUCTION CANAL EMAIL : Génère l'OBJET puis le CORPS" : "\n\nINSTRUCTION CANAL AM : Génère uniquement le CORPS";
-        return `${PROMPT_BASE}\n\nHISTORIQUE :\n${hist || "Aucun"}\n\nDEMANDE :\n${dem}\n\nINSTRUCTIONS :\n${inst || "Aucune"}${instructionCanal}\n\nGénère la réponse puis *** et le BASE.`;
+        
+        if (!dem) {
+            throw new Error("Veuillez saisir une demande client à traiter.");
+        }
+        
+        let instructionCanal = "";
+        if (canal === "EMAIL") {
+            instructionCanal = `\n\nINSTRUCTION CANAL EMAIL : Génère d'abord l'OBJET sur une ligne, puis le CORPS du message. Sépare l'objet du corps par un saut de ligne. Format attendu :
+Objet: [votre objet ici]
+
+[corps du message]`;
+        } else {
+            instructionCanal = `\n\nINSTRUCTION CANAL APPLICATION MOBILE : Génère uniquement le CORPS du message (sans salutation, ni signature).`;
+        }
+        
+        return `${PROMPT_BASE}\n\n****************************\nHISTORIQUE :\n${hist || "Aucun historique"}\n\nDEMANDE CLIENT :\n${dem}\n\nINSTRUCTIONS COMPLÉMENTAIRES :\n${inst || "Aucune instruction spécifique"}${instructionCanal}\n\n************************************\nGénère maintenant la réponse selon les instructions du canal, suivie de "***" et du BASE.`;
     }
     
     async function genererAvecGemini() {
         const apiKey = document.getElementById('api_key').value.trim();
         const model = document.getElementById('model_select').value;
-        if (!apiKey) { showStatus("❌ Configurez votre clé API", "error"); return; }
-        if (isGenerating) return;
+        const canal = document.getElementById('canal_choix').value;
+        
+        if (!apiKey) {
+            showStatus("❌ Veuillez configurer votre clé API", "error");
+            return;
+        }
+        
+        if (isGenerating) {
+            showStatus("⏳ Génération en cours...", "info");
+            return;
+        }
         
         let prompt;
-        try { prompt = construirePromptComplet(); } catch(e) { showStatus(`❌ ${e.message}`, "error"); return; }
+        try {
+            prompt = construirePromptComplet();
+        } catch (error) {
+            showStatus(`❌ ${error.message}`, "error");
+            return;
+        }
         
         isGenerating = true;
-        showStatus(`<span class='loading'></span> Génération...`, "info");
+        const modelDisplay = model.includes('gemini-3') ? 'Gemini 3' : 'Gemini 2.5';
+        showStatus(`<span class='loading'></span> Génération avec ${modelDisplay} (${model})...`, "info");
         
         try {
             const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7, maxOutputTokens: 4096 } })
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: {
+                        temperature: 0.7,
+                        maxOutputTokens: 4096,
+                        topP: 0.95
+                    }
+                })
             });
-            if (!response.ok) throw new Error("Erreur API");
-            const data = await response.json();
-            let generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
             
-            let corpsMessage = generatedText;
-            let baseContent = "B : \n\nA : \n\nS : \n\nE : n/a";
-            if (generatedText.includes('***')) {
-                const parts = generatedText.split('***');
-                corpsMessage = parts[0].trim();
-                baseContent = parts[1].trim();
+            if (!response.ok) {
+                const errorData = await response.json();
+                let errorMsg = errorData.error?.message || `Erreur ${response.status}`;
+                
+                if (errorMsg.includes('not found') && model.includes('gemini-3')) {
+                    errorMsg = `Le modèle ${model} n'est pas encore disponible sur votre compte. Utilisez un modèle Gemini 2.5 (stable) en attendant.`;
+                }
+                throw new Error(errorMsg);
+            }
+            
+            const data = await response.json();
+            let generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            
+            if (!generatedText) {
+                throw new Error("Réponse vide de l'API");
+            }
+            
+            let objet = "";
+            let corpsMessage = "";
+            let baseContent = "";
+            
+            if (canal === "EMAIL") {
+                const objetMatch = generatedText.match(/Objet\s*:\s*(.+?)(?:\n|$)/i);
+                if (objetMatch) {
+                    objet = objetMatch[1].trim();
+                    let tempText = generatedText.replace(/Objet\s*:\s*.+?(?:\n|$)/i, '');
+                    if (tempText.includes('***')) {
+                        const parts = tempText.split('***');
+                        corpsMessage = parts[0].trim();
+                        baseContent = parts[1].trim();
+                    } else {
+                        const baseMatch = tempText.match(/(B\s*:[\s\S]*)/i);
+                        if (baseMatch) {
+                            const baseIndex = tempText.indexOf(baseMatch[0]);
+                            corpsMessage = tempText.substring(0, baseIndex).trim();
+                            baseContent = baseMatch[0].trim();
+                        } else {
+                            corpsMessage = tempText.trim();
+                            baseContent = "B : \n\nA : \n\nS : \n\nE : n/a";
+                        }
+                    }
+                } else {
+                    corpsMessage = generatedText.trim();
+                    baseContent = "B : \n\nA : \n\nS : \n\nE : n/a";
+                }
+            } else {
+                if (generatedText.includes('***')) {
+                    const parts = generatedText.split('***');
+                    corpsMessage = parts[0].trim();
+                    baseContent = parts[1].trim();
+                } else {
+                    const baseMatch = generatedText.match(/(B\s*:[\s\S]*)/i);
+                    if (baseMatch) {
+                        const baseIndex = generatedText.indexOf(baseMatch[0]);
+                        corpsMessage = generatedText.substring(0, baseIndex).trim();
+                        baseContent = baseMatch[0].trim();
+                    } else {
+                        corpsMessage = generatedText.trim();
+                        baseContent = "B : \n\nA : \n\nS : \n\nE : n/a";
+                    }
+                }
             }
             
             const structure = getStructureComplete();
-            document.getElementById('reponse_client').value = structure.entete + corpsMessage + structure.signature;
-            document.getElementById('base_area').value = baseContent;
-            showStatus(`✅ Génération réussie !`, "success");
-        } catch(e) {
-            showStatus(`❌ Erreur: ${e.message}`, "error");
-        } finally { isGenerating = false; }
+            let reponseComplete;
+            
+            if (canal === "EMAIL") {
+                if (objet) {
+                    reponseComplete = `Objet : ${objet}\n\nBP : \n\nMme ,\n\n${corpsMessage}${structure.signature}`;
+                } else {
+                    reponseComplete = structure.entete + corpsMessage + structure.signature;
+                }
+            } else {
+                reponseComplete = structure.entete + corpsMessage + structure.signature;
+            }
+            
+            document.getElementById('reponse_client').value = reponseComplete;
+            document.getElementById('base_area').value = baseContent || "B : \n\nA : \n\nS : \n\nE : n/a";
+            
+            showStatus(`✅ Génération réussie avec ${modelDisplay} !`, "success");
+            
+        } catch (error) {
+            console.error('Erreur:', error);
+            showStatus(`❌ Erreur: ${error.message}`, "error");
+        } finally {
+            isGenerating = false;
+        }
     }
     
-    function copierPromptComplet() { try { copyToClipboard(construirePromptComplet()); showStatus("📋 Prompt copié", "success"); } catch(e) { showStatus(`❌ ${e.message}`, "error"); } }
-    function preparerEtCopierHisto() { copyToClipboard("HISTORIQUE..."); showStatus("📋 Copié", "success"); }
-    function copierTexte(id) { const el = document.getElementById(id); if(el.value) copyToClipboard(el.value); }
-    function copyToClipboard(text) { navigator.clipboard.writeText(text); }
-    function toutVider() { if(confirm("Effacer tout ?")) { ['historique','demande','instructions','base_area','reponse_client'].forEach(id => document.getElementById(id).value = ""); reinitialiserStructure(); showStatus("✅ Tout vidé", "success"); } }
-    function sauvegarderCleApi() { localStorage.setItem('gemini_api_key', document.getElementById('api_key').value); }
-    function sauvegarderModele() { localStorage.setItem('gemini_model', document.getElementById('model_select').value); }
+    function copierPromptComplet() {
+        try {
+            const prompt = construirePromptComplet();
+            copyToClipboard(prompt);
+            showStatus("📋 Prompt copié !", "success");
+        } catch (error) {
+            showStatus(`❌ ${error.message}`, "error");
+        }
+    }
+    
+    function preparerEtCopierHisto() {
+        const d = document.getElementById('demande').value;
+        const r = document.getElementById('reponse_client').value;
+        const b = document.getElementById('base_area').value;
+        const canal = document.getElementById('canal_choix').value;
+        
+        if (!d && !r) {
+            showStatus("❌ Aucune donnée à historiser", "error");
+            return;
+        }
+        
+        // Extraire la date et l'heure de la demande
+        const dateHeureExtraite = extraireDateHeureDemande(d);
+        
+        let datePosteFormatee;
+        let heureDemande;
+        
+        if (dateHeureExtraite.found) {
+            // Utiliser la date et l'heure extraites de la demande
+            datePosteFormatee = dateHeureExtraite.date;
+            heureDemande = dateHeureExtraite.heure;
+        } else {
+            // Utiliser la date et l'heure du poste
+            const now = new Date();
+            const moisNoms = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+            datePosteFormatee = `${now.getDate()} ${moisNoms[now.getMonth()]} ${now.getFullYear()}`;
+            
+            // Rechercher une heure dans la demande
+            const heureMatch = d.match(/([01]?[0-9]|2[0-3])[:h][0-5][0-9]/i);
+            heureDemande = heureMatch ? heureMatch[0].replace('h', ':') : "--:--";
+        }
+        
+        const labelEntete = (canal === "EMAIL") ? `Mail Odigo du ${datePosteFormatee} à ${heureDemande}` : `AM du ${datePosteFormatee} à ${heureDemande}`;
+        
+        const bloc = `${b || "B : \n\nA : \n\nS : \n\nE : "}\n\n***************************\n\n${labelEntete}\n\nRequête client :\n${d || "(non renseignée)"}\n\nRéponse apportée :\n\n${r || "(non renseignée)"}`;
+        
+        copyToClipboard(bloc);
+        showStatus("📋 Historisation copiée !", "success");
+    }
+    
+    function copierTexte(id) {
+        const element = document.getElementById(id);
+        if (!element.value.trim()) {
+            showStatus(`⚠️ Champ vide`, "warning");
+            return;
+        }
+        copyToClipboard(element.value);
+        showStatus(`📋 Copié !`, "success");
+    }
+    
+    function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).catch(() => {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+        });
+    }
+    
+    function toutVider() {
+        if(confirm("Effacer tous les champs ?")) {
+            ['historique', 'demande', 'instructions', 'base_area', 'reponse_client'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = "";
+            });
+            reinitialiserStructure();
+            showStatus("✅ Tout a été vidé", "success");
+        }
+    }
+    
+    function sauvegarderCleApi() {
+        const apiKey = document.getElementById('api_key').value;
+        if (apiKey) localStorage.setItem('gemini_api_key', apiKey);
+    }
+    
+    function sauvegarderModele() {
+        const model = document.getElementById('model_select').value;
+        localStorage.setItem('gemini_model', model);
+    }
+    
+    function sauvegarderCanal() {
+        const canal = document.getElementById('canal_choix').value;
+        localStorage.setItem('canal_choix', canal);
+    }
+    
     function chargerDonnees() {
-        if(localStorage.getItem('gemini_api_key')) document.getElementById('api_key').value = localStorage.getItem('gemini_api_key');
-        if(localStorage.getItem('gemini_model')) document.getElementById('model_select').value = localStorage.getItem('gemini_model');
-        rafraichirListeModeles();
+        const savedKey = localStorage.getItem('gemini_api_key');
+        if (savedKey) document.getElementById('api_key').value = savedKey;
+        const savedModel = localStorage.getItem('gemini_model');
+        if (savedModel) document.getElementById('model_select').value = savedModel;
+        const savedCanal = localStorage.getItem('canal_choix');
+        if (savedCanal) document.getElementById('canal_choix').value = savedCanal;
     }
     
-    document.addEventListener('DOMContentLoaded', () => { chargerDonnees(); majStructureReponse(); updateMomentInfo();
+    // Mettre à jour l'info toutes les minutes
+    setInterval(updateMomentInfo, 60000);
+    
+    document.addEventListener('DOMContentLoaded', () => {
+        chargerDonnees();
+        majStructureReponse();
+        updateMomentInfo();
+        
         document.getElementById('api_key').addEventListener('change', sauvegarderCleApi);
+        document.getElementById('api_key').addEventListener('blur', sauvegarderCleApi);
         document.getElementById('model_select').addEventListener('change', sauvegarderModele);
-        document.getElementById('canal_choix').addEventListener('change', majStructureReponse);
-        showStatus("✅ Prêt ! Créez des modèles, exportez-les par email pour les retrouver partout.", "success");
+        document.getElementById('canal_choix').addEventListener('change', sauvegarderCanal);
+        
+        ['historique', 'demande', 'instructions'].forEach(id => {
+            document.getElementById(id).addEventListener('keydown', (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                    e.preventDefault();
+                    genererAvecGemini();
+                }
+            });
+        });
+        
+        showStatus("✅ Prêt ! Modèles Gemini 3 disponibles. Sélectionnez-les dans la configuration API.", "success");
     });
 </script>
 
