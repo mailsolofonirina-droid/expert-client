@@ -34,6 +34,10 @@
         .btn-save:hover { background: #c9a47b; }
         .btn-analyze { background: #8a6e9e; color: white; }
         .btn-analyze:hover { background: #7a5c8c; }
+        .btn-export { background: #5a7c8c; color: white; }
+        .btn-export:hover { background: #4a6c7c; }
+        .btn-import { background: #6a885c; color: white; }
+        .btn-import:hover { background: #5a784c; }
         
         .btn-group { display: flex; gap: 8px; margin-top: 10px; }
         .btn-group .btn { margin-top: 0; }
@@ -80,6 +84,9 @@
         .modal input, .modal textarea { width: 100%; margin: 10px 0; padding: 8px; border: 1px solid #d0d8de; border-radius: 4px; box-sizing: border-box; }
         .modal textarea { min-height: 150px; }
         .modal-buttons { display: flex; gap: 10px; justify-content: flex-end; margin-top: 15px; }
+        .import-export-group { display: flex; gap: 5px; margin-top: 5px; }
+        .import-export-group button { flex: 1; padding: 6px; font-size: 10px; margin: 0; }
+        .file-input { display: none; }
     </style>
 </head>
 <body>
@@ -139,6 +146,12 @@
         
         <div class="spacer"></div>
         
+        <div class="import-export-group">
+            <button class="btn-export" onclick="exporterInstructions()">📤 EXPORTER LES INSTRUCTIONS</button>
+            <button class="btn-import" onclick="importerInstructions()">📥 IMPORTER DES INSTRUCTIONS</button>
+        </div>
+        <input type="file" id="fileImport" accept=".json" style="display: none;" onchange="importerFichierInstructions(event)">
+        
         <label>🔍 RECHERCHE D'INSTRUCTIONS</label>
         <div class="search-box">
             <input type="text" id="searchInstructions" placeholder="🔎 Rechercher par titre ou contenu..." onkeyup="filtrerInstructions()">
@@ -174,6 +187,7 @@
             <button class="test-btn" onclick="verifierModelesDisponibles()" style="background: #6c8e9e;">📋 Vérifier les modèles disponibles</button>
             <div class="info-text">Obtenez une clé sur <a href="https://aistudio.google.com/apikey" target="_blank">Google AI Studio</a> (gratuite)</div>
             <div class="info-text" style="color: #b8860b; margin-top: 8px;">💡 <strong>Astuce :</strong> Pour Gemini 3, assurez-vous d'avoir activé les preview models</div>
+            <div class="info-text" style="color: #7c9a6e; margin-top: 8px;">💾 <strong>Sauvegarde :</strong> Utilisez Export/Import pour transférer vos instructions entre postes</div>
         </div>
     </div>
 
@@ -242,6 +256,101 @@
         if (countSpan) {
             countSpan.textContent = `(${instructionsEnregistrees.length})`;
         }
+    }
+    
+    // EXPORT des instructions vers un fichier JSON
+    function exporterInstructions() {
+        if (instructionsEnregistrees.length === 0) {
+            showStatus("❌ Aucune instruction à exporter", "error");
+            return;
+        }
+        
+        const exportData = {
+            version: "1.0",
+            date: new Date().toISOString(),
+            instructions: instructionsEnregistrees
+        };
+        
+        const dataStr = JSON.stringify(exportData, null, 2);
+        const blob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `instructions_totalenergies_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        showStatus(`📤 ${instructionsEnregistrees.length} instructions exportées avec succès !`, "success");
+    }
+    
+    // IMPORT des instructions depuis un fichier
+    function importerInstructions() {
+        document.getElementById('fileImport').click();
+    }
+    
+    function importerFichierInstructions(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const importedData = JSON.parse(e.target.result);
+                let nouvellesInstructions = [];
+                
+                // Vérifier le format du fichier importé
+                if (importedData.instructions && Array.isArray(importedData.instructions)) {
+                    nouvellesInstructions = importedData.instructions;
+                } else if (Array.isArray(importedData)) {
+                    nouvellesInstructions = importedData;
+                } else {
+                    throw new Error("Format de fichier invalide");
+                }
+                
+                // Vérifier que chaque instruction a les bons champs
+                nouvellesInstructions = nouvellesInstructions.filter(inst => inst.titre && inst.instructions);
+                
+                if (nouvellesInstructions.length === 0) {
+                    throw new Error("Aucune instruction valide trouvée");
+                }
+                
+                // Générer de nouveaux IDs pour éviter les conflits
+                nouvellesInstructions = nouvellesInstructions.map(inst => ({
+                    ...inst,
+                    id: Date.now() + Math.random() * 10000 + inst.id
+                }));
+                
+                // Fusionner avec les instructions existantes (option: remplacer ou ajouter)
+                const choix = confirm(`${nouvellesInstructions.length} instruction(s) trouvée(s).\n\nCliquez sur OK pour AJOUTER à vos instructions existantes.\nCliquez sur Annuler pour REMPLACER complètement.`);
+                
+                if (choix) {
+                    // Ajouter aux existantes
+                    instructionsEnregistrees = [...nouvellesInstructions, ...instructionsEnregistrees];
+                    showStatus(`✅ ${nouvellesInstructions.length} instruction(s) ajoutée(s) avec succès !`, "success");
+                } else {
+                    // Remplacer complètement
+                    instructionsEnregistrees = nouvellesInstructions;
+                    showStatus(`✅ ${nouvellesInstructions.length} instruction(s) importée(s) (remplacement total)`, "success");
+                }
+                
+                sauvegarderInstructions();
+                filtrerInstructions();
+                
+            } catch (error) {
+                showStatus(`❌ Erreur lors de l'import: ${error.message}`, "error");
+            }
+        };
+        
+        reader.onerror = function() {
+            showStatus("❌ Erreur de lecture du fichier", "error");
+        };
+        
+        reader.readAsText(file);
+        
+        // Réinitialiser l'input file pour permettre de réimporter le même fichier
+        event.target.value = '';
     }
     
     function filtrerInstructions() {
@@ -942,7 +1051,7 @@ Format de réponse attendu (uniquement le contenu des instructions, sans comment
             });
         });
         
-        showStatus("✅ Prêt ! Modèles Gemini 3 disponibles. Sélectionnez-les dans la configuration API.", "success");
+        showStatus("✅ Prêt ! Utilisez Export/Import pour sauvegarder vos instructions d'un poste à l'autre.", "success");
     });
 </script>
 
