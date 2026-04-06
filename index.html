@@ -30,6 +30,10 @@
         .btn-vider:hover { background: #d0dce4; color: #5a6e7c; }
         .btn-config { background: #8aa0ae; color: white; }
         .btn-config:hover { background: #788e9c; }
+        .btn-save { background: #d9b48b; color: white; }
+        .btn-save:hover { background: #c9a47b; }
+        .btn-analyze { background: #8a6e9e; color: white; }
+        .btn-analyze:hover { background: #7a5c8c; }
         
         .btn-group { display: flex; gap: 8px; margin-top: 10px; }
         .btn-group .btn { margin-top: 0; }
@@ -53,6 +57,21 @@
         
         .spacer { height: 10px; }
         .heure-info { font-size: 10px; color: #8aa0ae; margin-top: 5px; text-align: right; }
+        
+        /* Styles pour les instructions enregistrées */
+        .saved-instructions-panel { background: #f5f7f9; border: 1px solid #dce4e8; border-radius: 6px; margin-top: 10px; padding: 8px; max-height: 200px; overflow-y: auto; }
+        .saved-instruction-item { background: white; border: 1px solid #e2e8ec; border-radius: 4px; padding: 8px; margin-bottom: 6px; cursor: pointer; transition: all 0.2s; }
+        .saved-instruction-item:hover { background: #f0f6ec; border-color: #7c9a6e; }
+        .saved-instruction-title { font-weight: bold; color: #5a6e7c; font-size: 11px; margin-bottom: 4px; }
+        .saved-instruction-preview { font-size: 10px; color: #8aa0ae; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .instruction-actions { display: flex; gap: 5px; margin-top: 5px; }
+        .instruction-actions button { flex: 1; padding: 3px; font-size: 9px; margin: 0; }
+        .btn-delete { background: #e2e8ec; color: #c97d6e; border: none; border-radius: 3px; cursor: pointer; }
+        .btn-delete:hover { background: #fef5f3; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: white; border-radius: 8px; padding: 20px; max-width: 500px; width: 90%; }
+        .modal input, .modal textarea { width: 100%; margin: 10px 0; padding: 8px; border: 1px solid #d0d8de; border-radius: 4px; }
+        .modal-buttons { display: flex; gap: 10px; justify-content: flex-end; margin-top: 15px; }
     </style>
 </head>
 <body>
@@ -81,6 +100,12 @@
             <button class="btn btn-primary" onclick="genererAvecGemini()">✨ GÉNÉRER AVEC GEMINI</button>
             <button class="btn btn-secondary" onclick="copierPromptComplet()">📋 COPIER LE PROMPT</button>
         </div>
+        
+        <div class="btn-group">
+            <button class="btn btn-analyze" onclick="analyserEtProposerInstructions()">🔍 ANALYSER & PROPOSER INSTRUCTIONS</button>
+            <button class="btn btn-save" onclick="ouvrirModalEnregistrement()">💾 ENREGISTRER INSTRUCTIONS TYPE</button>
+        </div>
+        
         <div id="statusMessage" class="status-bar">✅ Prêt. Cliquez sur "⚙️ CONFIGURATION API" ci-dessous pour configurer Gemini</div>
     </div>
 
@@ -103,6 +128,14 @@
 
         <div class="spacer"></div>
         <button class="btn btn-primary" onclick="preparerEtCopierHisto()">📝 PRÉPARER ET COPIER HISTORISATION</button>
+        
+        <div class="spacer"></div>
+        
+        <label>📚 INSTRUCTIONS TYPE ENREGISTRÉES</label>
+        <div id="savedInstructionsList" class="saved-instructions-panel">
+            <!-- Les instructions enregistrées apparaîtront ici -->
+            <div style="text-align: center; color: #8aa0ae; padding: 20px;">Aucune instruction enregistrée</div>
+        </div>
         
         <div class="spacer"></div>
         <button class="btn btn-config" onclick="toggleConfigPanel()">⚙️ CONFIGURATION API</button>
@@ -132,116 +165,239 @@
 
 </div>
 
+<!-- Modal pour enregistrer les instructions -->
+<div id="saveModal" class="modal">
+    <div class="modal-content">
+        <h3>💾 Enregistrer les instructions type</h3>
+        <label>Titre :</label>
+        <input type="text" id="instructionTitle" placeholder="Ex: Facturation - Délai de paiement, Relevé de compteur...">
+        <label>Instructions :</label>
+        <textarea id="instructionContent" rows="5" placeholder="Collez ou écrivez les instructions à enregistrer..."></textarea>
+        <div class="modal-buttons">
+            <button class="btn btn-secondary" onclick="fermerModal()">Annuler</button>
+            <button class="btn btn-primary" onclick="enregistrerInstruction()">Enregistrer</button>
+        </div>
+    </div>
+</div>
+
 <script>
     let isGenerating = false;
     
-    const PROMPT_BASE = `Demande du client :
-
-
-
-
-EXPERT RELATION CLIENT TOTALENERGIES
-ÉTAPE 1 : ANALYSE PSYCHOLOGIQUE ET CONTEXTUELLE (INTERNE)
-Avant de rédiger, analysez silencieusement le message du client :
-
-Sentiment : (Neutre / Agacé / Très Mécontent / Urgent).
-
-Effort Client : Le client a-t-il déjà fait des démarches ou envoyé des pièces ? (Oui/Non).
-
-Posture : - Si Agacé : Empathie immédiate et validation de la frustration.
-
-Si Effort fourni : Valorisation immédiate de sa proactivité ("Je vous félicite pour...", "Je vous remercie pour votre réactivité...").
-
-L'ÉTAPE 1 doit être réalisée sous forme de réflexion interne. Ne rédigez pas cette analyse dans la réponse finale, utilisez-la uniquement pour orienter le ton et la structure de votre message.
-
-ÉTAPE 2 : DIRECTIVES DE RÉDACTION (STRICTES)
-
-1. Identité et Posture :
-
-Persona : Conseiller expert du service client TotalEnergies.
-
-Ton : Chaleureux, rassurant et pédagogue.
-
-Fusion d'accueil : La première phrase doit fusionner l'accueil et la prise en charge, adaptée à l'émotion ou à la situation. Variez les formulations pour éviter toute répétition automatique.
-
-2. Articulation et Fluidité :
-
-Rédaction naturelle, sans exagération des connecteurs logiques.
-
-Séparez chaque idée par un paragraphe distinct.
-
-Utilisez le "je" pour vos actions et le "nous" pour représenter TotalEnergies.
-
-3. Règles de Construction Stricte :
-
-Format : Texte simple (e-mail), sans listes à puces ni tirets (sauf section BASE).
-
-Syntaxes : Mode déclaratif. Utilisez des formes de courtoisie ("Je vous invite à", "Je vous prie de").
-
-Chiffres et Unités : Nombres en chiffres (ex: 2 jours, 150 €). Unités obligatoires : €, kWh, kVA.
-
-Format des Dates : "jour mois année" avec le mois en lettres (ex : 5 mars 2026). Interdiction des barres obliques (/).
-
-Temps : Futur simple pour les actions à venir ("Je ferai").
-
-Rubriques Espace Client : Respecter strictement la mise en page : "Nom de la rubrique > Sous-rubrique". N'inventez aucune rubrique. Si aucune n'est fournie, ne proposez pas de chemin.
-
-Pièces jointes / Liens : Ne supprimez jamais les liens fournis dans les instructions de réponse.
-
-Identité Client : NOM, PRÉNOM, ADRESSE en MAJUSCULES. Civilité : Seule l'initiale est au majuscule (Madame/Monsieur).
-
-Majuscules Systématiques : Les noms des services internes doivent porter une majuscule sur chaque initiale (ex: Service Technique, Service Déménagement, Service Paiement).
-
-4. Lexique et Ponctuation :
-
-Mots à bannir : problème, malheureusement, recommander, engager, engagement, meilleurs délais, impatience, co-titulaire.
-
-Respecter : ENEDIS, gestionnaire du réseau d'électricité ; GRDF, gestionnaire du réseau de gaz ; Heures Pleines / Heures Creuses ; chèque énergie.
-
-Régle de ponctuation pour la rénumération : Virgule (,) en fin de ligne si la pensée est incomplète, point (.) si la phrase est complète. La dernière ligne finit toujours par un point.
-
-5. Annuaire des Contacts :
-
-Service Paiement : 09 70 80 65 45 (lun - sam, 9h - 19h).
-
-Service Technique / Clientèle : 09 70 80 69 69 (lun - sam, 9h - 19h).
-
-Agence de Services et de Paiements (ASP) : 08 05 20 48 05.
-
-Service Commercial : 30 99 (8h - 20h).
-
-Engagement Satisfaction Client et Pédagogie :
-
-Valorisation et Allié du Client : Adoptez une posture de partenaire conseil. Si une demande n'est pas recevable, ne vous contentez pas d'un refus ; expliquez le "pourquoi" pédagogiquement et basculez immédiatement sur une solution alternative ou un conseil utile (méthode du pivot positif).
-
-Transparence et Clarté : Évitez le jargon technique. Expliquez les calculs ou les règles de gestion de manière simple pour que le client comprenne la situation, ce qui réduit la frustration même en cas de désaccord.
-
-Preuve d'Étude du Dossier : Pour montrer que la demande a été traitée avec soin, citez systématiquement des éléments précis (montant exact TTC, numéro de facture, dates ou index de consommation....).
-
-IMPORTANT : 
-- Pour le canal EMAIL : Génère UNIQUEMENT l'OBJET et le CORPS du message. L'objet doit être concis et précis. Le corps est le contenu principal du message.
-- Pour le canal AM (Application Mobile) : Génère UNIQUEMENT le CORPS du message.
-- Ne génère PAS les salutations, formules de politesse, signature, BP, ni "Mme,". Ces éléments seront ajoutés automatiquement par l'interface.
-
-Pour chaque réponse, il faut générer le BASE à la fin, séparé par "***".
-
-Si j'ai mentionné da la réonse que la demande est transmise à un autre service, fournissez un commentaire explicatif pour ce service avant la section BASE. Pour qu'il puisse comprends le traitement qu'on attend d'eux.
-
-Séparateur ()*.
-
-Section BASE (Format Stricte) :
-
-B : Résumé de la demande en une phrase simple ("Le client demande/souhaite").
-
-A : Informations factuelles constatées sur le dossier (ligne vide si aucune).
-
-S : Résumé de la solution apportée ("J'ai informé/fait/proposé/expliqué").
-
-E : Actions possibles sur l'Espace Client ou anticipations indiquées (Indiquer n/a si rien).`;
+    const PROMPT_BASE = `Demande du client :\n\n\n\n\nEXPERT RELATION CLIENT TOTALENERGIES\nÉTAPE 1 : ANALYSE PSYCHOLOGIQUE ET CONTEXTUELLE (INTERNE)\nAvant de rédiger, analysez silencieusement le message du client :\n\nSentiment : (Neutre / Agacé / Très Mécontent / Urgent).\n\nEffort Client : Le client a-t-il déjà fait des démarches ou envoyé des pièces ? (Oui/Non).\n\nPosture : - Si Agacé : Empathie immédiate et validation de la frustration.\n\nSi Effort fourni : Valorisation immédiate de sa proactivité ("Je vous félicite pour...", "Je vous remercie pour votre réactivité...").\n\nL'ÉTAPE 1 doit être réalisée sous forme de réflexion interne. Ne rédigez pas cette analyse dans la réponse finale, utilisez-la uniquement pour orienter le ton et la structure de votre message.\n\nÉTAPE 2 : DIRECTIVES DE RÉDACTION (STRICTES)\n\n1. Identité et Posture :\n\nPersona : Conseiller expert du service client TotalEnergies.\n\nTon : Chaleureux, rassurant et pédagogue.\n\nFusion d'accueil : La première phrase doit fusionner l'accueil et la prise en charge, adaptée à l'émotion ou à la situation. Variez les formulations pour éviter toute répétition automatique.\n\n2. Articulation et Fluidité :\n\nRédaction naturelle, sans exagération des connecteurs logiques.\n\nSéparez chaque idée par un paragraphe distinct.\n\nUtilisez le "je" pour vos actions et le "nous" pour représenter TotalEnergies.\n\n3. Règles de Construction Stricte :\n\nFormat : Texte simple (e-mail), sans listes à puces ni tirets (sauf section BASE).\n\nSyntaxes : Mode déclaratif. Utilisez des formes de courtoisie ("Je vous invite à", "Je vous prie de").\n\nChiffres et Unités : Nombres en chiffres (ex: 2 jours, 150 €). Unités obligatoires : €, kWh, kVA.\n\nFormat des Dates : "jour mois année" avec le mois en lettres (ex : 5 mars 2026). Interdiction des barres obliques (/).\n\nTemps : Futur simple pour les actions à venir ("Je ferai").\n\nRubriques Espace Client : Respecter strictement la mise en page : "Nom de la rubrique > Sous-rubrique". N'inventez aucune rubrique. Si aucune n'est fournie, ne proposez pas de chemin.\n\nPièces jointes / Liens : Ne supprimez jamais les liens fournis dans les instructions de réponse.\n\nIdentité Client : NOM, PRÉNOM, ADRESSE en MAJUSCULES. Civilité : Seule l'initiale est au majuscule (Madame/Monsieur).\n\nMajuscules Systématiques : Les noms des services internes doivent porter une majuscule sur chaque initiale (ex: Service Technique, Service Déménagement, Service Paiement).\n\n4. Lexique et Ponctuation :\n\nMots à bannir : problème, malheureusement, recommander, engager, engagement, meilleurs délais, impatience, co-titulaire.\n\nRespecter : ENEDIS, gestionnaire du réseau d'électricité ; GRDF, gestionnaire du réseau de gaz ; Heures Pleines / Heures Creuses ; chèque énergie.\n\nRégle de ponctuation pour la rénumération : Virgule (,) en fin de ligne si la pensée est incomplète, point (.) si la phrase est complète. La dernière ligne finit toujours par un point.\n\n5. Annuaire des Contacts :\n\nService Paiement : 09 70 80 65 45 (lun - sam, 9h - 19h).\n\nService Technique / Clientèle : 09 70 80 69 69 (lun - sam, 9h - 19h).\n\nAgence de Services et de Paiements (ASP) : 08 05 20 48 05.\n\nService Commercial : 30 99 (8h - 20h).\n\nEngagement Satisfaction Client et Pédagogie :\n\nValorisation et Allié du Client : Adoptez une posture de partenaire conseil. Si une demande n'est pas recevable, ne vous contentez pas d'un refus ; expliquez le "pourquoi" pédagogiquement et basculez immédiatement sur une solution alternative ou un conseil utile (méthode du pivot positif).\n\nTransparence et Clarté : Évitez le jargon technique. Expliquez les calculs ou les règles de gestion de manière simple pour que le client comprenne la situation, ce qui réduit la frustration même en cas de désaccord.\n\nPreuve d'Étude du Dossier : Pour montrer que la demande a été traitée avec soin, citez systématiquement des éléments précis (montant exact TTC, numéro de facture, dates ou index de consommation....).\n\nIMPORTANT : \n- Pour le canal EMAIL : Génère UNIQUEMENT l'OBJET et le CORPS du message. L'objet doit être concis et précis. Le corps est le contenu principal du message.\n- Pour le canal AM (Application Mobile) : Génère UNIQUEMENT le CORPS du message.\n- Ne génère PAS les salutations, formules de politesse, signature, BP, ni "Mme,". Ces éléments seront ajoutés automatiquement par l'interface.\n\nPour chaque réponse, il faut générer le BASE à la fin, séparé par "***".\n\nSi j'ai mentionné da la réonse que la demande est transmise à un autre service, fournissez un commentaire explicatif pour ce service avant la section BASE. Pour qu'il puisse comprends le traitement qu'on attend d'eux.\n\nSéparateur ()*.\n\nSection BASE (Format Stricte) :\n\nB : Résumé de la demande en une phrase simple ("Le client demande/souhaite").\n\nA : Informations factuelles constatées sur le dossier (ligne vide si aucune).\n\nS : Résumé de la solution apportée ("J'ai informé/fait/proposé/expliqué").\n\nE : Actions possibles sur l'Espace Client ou anticipations indiquées (Indiquer n/a si rien).`;
     
-    // Fonction pour extraire la date et l'heure de la demande
+    // Gestion des instructions enregistrées
+    let instructionsEnregistrees = [];
+    
+    function chargerInstructionsEnregistrees() {
+        const saved = localStorage.getItem('totalenergies_instructions');
+        if (saved) {
+            instructionsEnregistrees = JSON.parse(saved);
+        } else {
+            // Instructions par défaut
+            instructionsEnregistrees = [
+                {
+                    id: Date.now(),
+                    titre: "Facture impayée - Délai de paiement",
+                    instructions: "Le client a reçu une facture impayée. Expliquer la procédure de régularisation, proposer un échéancier si nécessaire. Mentionner les délais avant coupure (14 jours). Proposer le paiement en ligne dans l'Espace Client > Mes factures > Payer ma facture. Si difficultés financières, orienter vers le Service Paiement."
+                },
+                {
+                    id: Date.now() + 1,
+                    titre: "Problème de compteur / Relevé",
+                    instructions: "Le client signale une anomalie de compteur ou de consommation. Expliquer qu'ENEDIS gère le réseau. Suggérer un autorelève dans l'Espace Client. Si suspicion de dysfonctionnement, proposer une intervention technique. Ne pas donner de diagnostic technique précis."
+                }
+            ];
+            sauvegarderInstructions();
+        }
+        afficherListeInstructions();
+    }
+    
+    function sauvegarderInstructions() {
+        localStorage.setItem('totalenergies_instructions', JSON.stringify(instructionsEnregistrees));
+    }
+    
+    function afficherListeInstructions() {
+        const container = document.getElementById('savedInstructionsList');
+        if (!container) return;
+        
+        if (instructionsEnregistrees.length === 0) {
+            container.innerHTML = '<div style="text-align: center; color: #8aa0ae; padding: 20px;">Aucune instruction enregistrée</div>';
+            return;
+        }
+        
+        container.innerHTML = instructionsEnregistrees.map(inst => `
+            <div class="saved-instruction-item" onclick="chargerInstruction('${inst.id}')">
+                <div class="saved-instruction-title">📌 ${escapeHtml(inst.titre)}</div>
+                <div class="saved-instruction-preview">${escapeHtml(inst.instructions.substring(0, 60))}${inst.instructions.length > 60 ? '...' : ''}</div>
+                <div class="instruction-actions" onclick="event.stopPropagation()">
+                    <button class="btn-delete" onclick="supprimerInstruction(${inst.id})">🗑️ Supprimer</button>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    function chargerInstruction(id) {
+        const instruction = instructionsEnregistrees.find(i => i.id == id);
+        if (instruction) {
+            document.getElementById('instructions').value = instruction.instructions;
+            showStatus(`✅ Instruction "${instruction.titre}" chargée dans le champ instructions`, "success");
+        }
+    }
+    
+    function supprimerInstruction(id) {
+        if (confirm('Supprimer cette instruction type ?')) {
+            instructionsEnregistrees = instructionsEnregistrees.filter(i => i.id != id);
+            sauvegarderInstructions();
+            afficherListeInstructions();
+            showStatus("✅ Instruction supprimée", "success");
+        }
+    }
+    
+    function ouvrirModalEnregistrement() {
+        const instructionsContent = document.getElementById('instructions').value;
+        if (!instructionsContent.trim()) {
+            showStatus("❌ Le champ instructions est vide. Rien à enregistrer.", "error");
+            return;
+        }
+        
+        document.getElementById('instructionContent').value = instructionsContent;
+        document.getElementById('instructionTitle').value = "";
+        document.getElementById('saveModal').style.display = 'flex';
+    }
+    
+    function fermerModal() {
+        document.getElementById('saveModal').style.display = 'none';
+        document.getElementById('instructionTitle').value = "";
+        document.getElementById('instructionContent').value = "";
+    }
+    
+    function enregistrerInstruction() {
+        const titre = document.getElementById('instructionTitle').value.trim();
+        const contenu = document.getElementById('instructionContent').value.trim();
+        
+        if (!titre) {
+            showStatus("❌ Veuillez saisir un titre", "error");
+            return;
+        }
+        
+        if (!contenu) {
+            showStatus("❌ Aucun contenu à enregistrer", "error");
+            return;
+        }
+        
+        instructionsEnregistrees.unshift({
+            id: Date.now(),
+            titre: titre,
+            instructions: contenu
+        });
+        
+        sauvegarderInstructions();
+        afficherListeInstructions();
+        fermerModal();
+        showStatus(`✅ Instruction "${titre}" enregistrée avec succès`, "success");
+    }
+    
+    async function analyserEtProposerInstructions() {
+        const demande = document.getElementById('demande').value.trim();
+        const reponse = document.getElementById('reponse_client').value.trim();
+        
+        if (!demande && !reponse) {
+            showStatus("❌ Veuillez saisir une demande et/ou une réponse à analyser", "error");
+            return;
+        }
+        
+        const apiKey = document.getElementById('api_key').value.trim();
+        if (!apiKey) {
+            showStatus("❌ Veuillez configurer votre clé API pour l'analyse", "error");
+            return;
+        }
+        
+        showStatus("<span class='loading'></span> Analyse en cours...", "info");
+        
+        const promptAnalyse = `Analyse la demande client et la réponse apportée ci-dessous. 
+        
+DEMANDE CLIENT :
+${demande || "Non renseignée"}
+
+RÉPONSE APPORTÉE :
+${reponse || "Non renseignée"}
+
+OBJECTIF : Générer des instructions type que je pourrais réutiliser pour traiter des demandes similaires.
+
+Ces instructions doivent être claires, structurées et exploitables par un conseiller (ou une IA) pour répondre à une demande similaire.
+
+Format de réponse attendu (uniquement le contenu des instructions, sans commentaires supplémentaires) :
+
+[Titre de l'instruction]
+
+[Instructions détaillées : 
+- Analyser le contexte spécifique
+- Adapter le ton selon l'émotion détectée
+- Étapes clés à suivre
+- Points d'attention particuliers
+- Éléments à ne pas oublier]`;
+
+        try {
+            const model = "gemini-2.0-flash";
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: promptAnalyse }] }],
+                    generationConfig: {
+                        temperature: 0.7,
+                        maxOutputTokens: 1024
+                    }
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error("Erreur lors de l'analyse");
+            }
+            
+            const data = await response.json();
+            let generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            
+            if (!generatedText) {
+                throw new Error("Réponse vide");
+            }
+            
+            // Extraire le titre et les instructions
+            const lines = generatedText.split('\n');
+            let titre = "";
+            let instructions = "";
+            let inTitle = true;
+            
+            for (let line of lines) {
+                if (inTitle && line.trim() && !line.startsWith('-') && !line.startsWith('•')) {
+                    titre = line.trim();
+                    inTitle = false;
+                } else if (!inTitle) {
+                    instructions += line + '\n';
+                }
+            }
+            
+            if (!titre) titre = "Instructions générées automatiquement";
+            
+            // Pré-remplir le modal
+            document.getElementById('instructionTitle').value = titre.substring(0, 100);
+            document.getElementById('instructionContent').value = instructions.trim();
+            document.getElementById('saveModal').style.display = 'flex';
+            
+            showStatus("✅ Analyse terminée. Vous pouvez modifier et enregistrer les instructions proposées.", "success");
+            
+        } catch (error) {
+            console.error('Erreur analyse:', error);
+            showStatus(`❌ Erreur lors de l'analyse: ${error.message}`, "error");
+        }
+    }
+    
     function extraireDateHeureDemande(texteDemande) {
-        // Recherche des patterns de date comme: 31/03/26 13:28 ou 31/03/2026 13:28
         const datePattern = /(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s+(\d{1,2})[:h](\d{2})/i;
         const match = texteDemande.match(datePattern);
         
@@ -252,7 +408,6 @@ E : Actions possibles sur l'Espace Client ou anticipations indiquées (Indiquer 
             let heure = match[4].padStart(2, '0');
             let minute = match[5];
             
-            // Conversion de l'année si elle est sur 2 chiffres
             if (annee.length === 2) {
                 annee = '20' + annee;
             }
@@ -270,22 +425,18 @@ E : Actions possibles sur l'Espace Client ou anticipations indiquées (Indiquer 
         return { found: false };
     }
     
-    // Fonction pour obtenir le moment de la journée selon les créneaux horaires
     function getMomentDeLaJournee() {
         const now = new Date();
         const heures = now.getHours();
         const minutes = now.getMinutes();
         const heureMinute = heures + minutes / 60;
         
-        // 2h00 à 11h59 -> excellente journée
         if (heureMinute >= 2 && heureMinute < 12) {
             return "une excellente journée";
         }
-        // 12h00 à 16h59 -> excellent après-midi
         else if (heureMinute >= 12 && heureMinute < 17) {
             return "un excellent après-midi";
         }
-        // 17h00 à 1h59 -> excellente soirée
         else {
             return "une excellente soirée";
         }
@@ -443,10 +594,7 @@ E : Actions possibles sur l'Espace Client ou anticipations indiquées (Indiquer 
         
         let instructionCanal = "";
         if (canal === "EMAIL") {
-            instructionCanal = `\n\nINSTRUCTION CANAL EMAIL : Génère d'abord l'OBJET sur une ligne, puis le CORPS du message. Sépare l'objet du corps par un saut de ligne. Format attendu :
-Objet: [votre objet ici]
-
-[corps du message]`;
+            instructionCanal = `\n\nINSTRUCTION CANAL EMAIL : Génère d'abord l'OBJET sur une ligne, puis le CORPS du message. Sépare l'objet du corps par un saut de ligne. Format attendu :\nObjet: [votre objet ici]\n\n[corps du message]`;
         } else {
             instructionCanal = `\n\nINSTRUCTION CANAL APPLICATION MOBILE : Génère uniquement le CORPS du message (sans salutation, ni signature).`;
         }
@@ -605,23 +753,19 @@ Objet: [votre objet ici]
             return;
         }
         
-        // Extraire la date et l'heure de la demande
         const dateHeureExtraite = extraireDateHeureDemande(d);
         
         let datePosteFormatee;
         let heureDemande;
         
         if (dateHeureExtraite.found) {
-            // Utiliser la date et l'heure extraites de la demande
             datePosteFormatee = dateHeureExtraite.date;
             heureDemande = dateHeureExtraite.heure;
         } else {
-            // Utiliser la date et l'heure du poste
             const now = new Date();
             const moisNoms = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
             datePosteFormatee = `${now.getDate()} ${moisNoms[now.getMonth()]} ${now.getFullYear()}`;
             
-            // Rechercher une heure dans la demande
             const heureMatch = d.match(/([01]?[0-9]|2[0-3])[:h][0-5][0-9]/i);
             heureDemande = heureMatch ? heureMatch[0].replace('h', ':') : "--:--";
         }
@@ -690,11 +834,19 @@ Objet: [votre objet ici]
         if (savedCanal) document.getElementById('canal_choix').value = savedCanal;
     }
     
-    // Mettre à jour l'info toutes les minutes
+    // Fermer le modal en cliquant en dehors
+    window.onclick = function(event) {
+        const modal = document.getElementById('saveModal');
+        if (event.target === modal) {
+            fermerModal();
+        }
+    }
+    
     setInterval(updateMomentInfo, 60000);
     
     document.addEventListener('DOMContentLoaded', () => {
         chargerDonnees();
+        chargerInstructionsEnregistrees();
         majStructureReponse();
         updateMomentInfo();
         
