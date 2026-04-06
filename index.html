@@ -59,18 +59,26 @@
         .heure-info { font-size: 10px; color: #8aa0ae; margin-top: 5px; text-align: right; }
         
         /* Styles pour les instructions enregistrées */
-        .saved-instructions-panel { background: #f5f7f9; border: 1px solid #dce4e8; border-radius: 6px; margin-top: 10px; padding: 8px; max-height: 200px; overflow-y: auto; }
+        .saved-instructions-panel { background: #f5f7f9; border: 1px solid #dce4e8; border-radius: 6px; margin-top: 10px; max-height: 300px; overflow-y: auto; }
+        .search-box { padding: 8px; border-bottom: 1px solid #dce4e8; background: white; border-radius: 6px 6px 0 0; position: sticky; top: 0; z-index: 1; }
+        .search-box input { width: 100%; padding: 6px 10px; border: 1px solid #d0d8de; border-radius: 4px; font-size: 11px; box-sizing: border-box; }
+        .search-box input:focus { outline: none; border-color: #8aa0ae; }
+        .instructions-list { padding: 8px; max-height: 250px; overflow-y: auto; }
         .saved-instruction-item { background: white; border: 1px solid #e2e8ec; border-radius: 4px; padding: 8px; margin-bottom: 6px; cursor: pointer; transition: all 0.2s; }
         .saved-instruction-item:hover { background: #f0f6ec; border-color: #7c9a6e; }
         .saved-instruction-title { font-weight: bold; color: #5a6e7c; font-size: 11px; margin-bottom: 4px; }
         .saved-instruction-preview { font-size: 10px; color: #8aa0ae; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .instruction-actions { display: flex; gap: 5px; margin-top: 5px; }
-        .instruction-actions button { flex: 1; padding: 3px; font-size: 9px; margin: 0; }
-        .btn-delete { background: #e2e8ec; color: #c97d6e; border: none; border-radius: 3px; cursor: pointer; }
+        .instruction-actions button { flex: 1; padding: 3px; font-size: 9px; margin: 0; cursor: pointer; }
+        .btn-delete { background: #e2e8ec; color: #c97d6e; border: none; border-radius: 3px; }
         .btn-delete:hover { background: #fef5f3; }
+        .btn-edit { background: #e2e8ec; color: #6c8e9e; border: none; border-radius: 3px; }
+        .btn-edit:hover { background: #ecf1f4; }
+        .no-results { text-align: center; color: #8aa0ae; padding: 20px; font-size: 11px; }
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
         .modal-content { background: white; border-radius: 8px; padding: 20px; max-width: 500px; width: 90%; }
-        .modal input, .modal textarea { width: 100%; margin: 10px 0; padding: 8px; border: 1px solid #d0d8de; border-radius: 4px; }
+        .modal input, .modal textarea { width: 100%; margin: 10px 0; padding: 8px; border: 1px solid #d0d8de; border-radius: 4px; box-sizing: border-box; }
+        .modal textarea { min-height: 150px; }
         .modal-buttons { display: flex; gap: 10px; justify-content: flex-end; margin-top: 15px; }
     </style>
 </head>
@@ -131,10 +139,16 @@
         
         <div class="spacer"></div>
         
-        <label>📚 INSTRUCTIONS TYPE ENREGISTRÉES</label>
-        <div id="savedInstructionsList" class="saved-instructions-panel">
-            <!-- Les instructions enregistrées apparaîtront ici -->
-            <div style="text-align: center; color: #8aa0ae; padding: 20px;">Aucune instruction enregistrée</div>
+        <label>🔍 RECHERCHE D'INSTRUCTIONS</label>
+        <div class="search-box">
+            <input type="text" id="searchInstructions" placeholder="🔎 Rechercher par titre ou contenu..." onkeyup="filtrerInstructions()">
+        </div>
+        
+        <label>📚 INSTRUCTIONS TYPE ENREGISTRÉES <span id="instructionCount" style="font-size: 10px; color: #8aa0ae;"></span></label>
+        <div id="savedInstructionsPanel" class="saved-instructions-panel">
+            <div id="instructionsList" class="instructions-list">
+                <div style="text-align: center; color: #8aa0ae; padding: 20px;">Chargement...</div>
+            </div>
         </div>
         
         <div class="spacer"></div>
@@ -165,14 +179,15 @@
 
 </div>
 
-<!-- Modal pour enregistrer les instructions -->
+<!-- Modal pour enregistrer/modifier les instructions -->
 <div id="saveModal" class="modal">
     <div class="modal-content">
-        <h3>💾 Enregistrer les instructions type</h3>
+        <h3 id="modalTitle">💾 Enregistrer les instructions type</h3>
         <label>Titre :</label>
         <input type="text" id="instructionTitle" placeholder="Ex: Facturation - Délai de paiement, Relevé de compteur...">
         <label>Instructions :</label>
         <textarea id="instructionContent" rows="5" placeholder="Collez ou écrivez les instructions à enregistrer..."></textarea>
+        <input type="hidden" id="editInstructionId" value="">
         <div class="modal-buttons">
             <button class="btn btn-secondary" onclick="fermerModal()">Annuler</button>
             <button class="btn btn-primary" onclick="enregistrerInstruction()">Enregistrer</button>
@@ -182,6 +197,7 @@
 
 <script>
     let isGenerating = false;
+    let currentSearchTerm = "";
     
     const PROMPT_BASE = `Demande du client :\n\n\n\n\nEXPERT RELATION CLIENT TOTALENERGIES\nÉTAPE 1 : ANALYSE PSYCHOLOGIQUE ET CONTEXTUELLE (INTERNE)\nAvant de rédiger, analysez silencieusement le message du client :\n\nSentiment : (Neutre / Agacé / Très Mécontent / Urgent).\n\nEffort Client : Le client a-t-il déjà fait des démarches ou envoyé des pièces ? (Oui/Non).\n\nPosture : - Si Agacé : Empathie immédiate et validation de la frustration.\n\nSi Effort fourni : Valorisation immédiate de sa proactivité ("Je vous félicite pour...", "Je vous remercie pour votre réactivité...").\n\nL'ÉTAPE 1 doit être réalisée sous forme de réflexion interne. Ne rédigez pas cette analyse dans la réponse finale, utilisez-la uniquement pour orienter le ton et la structure de votre message.\n\nÉTAPE 2 : DIRECTIVES DE RÉDACTION (STRICTES)\n\n1. Identité et Posture :\n\nPersona : Conseiller expert du service client TotalEnergies.\n\nTon : Chaleureux, rassurant et pédagogue.\n\nFusion d'accueil : La première phrase doit fusionner l'accueil et la prise en charge, adaptée à l'émotion ou à la situation. Variez les formulations pour éviter toute répétition automatique.\n\n2. Articulation et Fluidité :\n\nRédaction naturelle, sans exagération des connecteurs logiques.\n\nSéparez chaque idée par un paragraphe distinct.\n\nUtilisez le "je" pour vos actions et le "nous" pour représenter TotalEnergies.\n\n3. Règles de Construction Stricte :\n\nFormat : Texte simple (e-mail), sans listes à puces ni tirets (sauf section BASE).\n\nSyntaxes : Mode déclaratif. Utilisez des formes de courtoisie ("Je vous invite à", "Je vous prie de").\n\nChiffres et Unités : Nombres en chiffres (ex: 2 jours, 150 €). Unités obligatoires : €, kWh, kVA.\n\nFormat des Dates : "jour mois année" avec le mois en lettres (ex : 5 mars 2026). Interdiction des barres obliques (/).\n\nTemps : Futur simple pour les actions à venir ("Je ferai").\n\nRubriques Espace Client : Respecter strictement la mise en page : "Nom de la rubrique > Sous-rubrique". N'inventez aucune rubrique. Si aucune n'est fournie, ne proposez pas de chemin.\n\nPièces jointes / Liens : Ne supprimez jamais les liens fournis dans les instructions de réponse.\n\nIdentité Client : NOM, PRÉNOM, ADRESSE en MAJUSCULES. Civilité : Seule l'initiale est au majuscule (Madame/Monsieur).\n\nMajuscules Systématiques : Les noms des services internes doivent porter une majuscule sur chaque initiale (ex: Service Technique, Service Déménagement, Service Paiement).\n\n4. Lexique et Ponctuation :\n\nMots à bannir : problème, malheureusement, recommander, engager, engagement, meilleurs délais, impatience, co-titulaire.\n\nRespecter : ENEDIS, gestionnaire du réseau d'électricité ; GRDF, gestionnaire du réseau de gaz ; Heures Pleines / Heures Creuses ; chèque énergie.\n\nRégle de ponctuation pour la rénumération : Virgule (,) en fin de ligne si la pensée est incomplète, point (.) si la phrase est complète. La dernière ligne finit toujours par un point.\n\n5. Annuaire des Contacts :\n\nService Paiement : 09 70 80 65 45 (lun - sam, 9h - 19h).\n\nService Technique / Clientèle : 09 70 80 69 69 (lun - sam, 9h - 19h).\n\nAgence de Services et de Paiements (ASP) : 08 05 20 48 05.\n\nService Commercial : 30 99 (8h - 20h).\n\nEngagement Satisfaction Client et Pédagogie :\n\nValorisation et Allié du Client : Adoptez une posture de partenaire conseil. Si une demande n'est pas recevable, ne vous contentez pas d'un refus ; expliquez le "pourquoi" pédagogiquement et basculez immédiatement sur une solution alternative ou un conseil utile (méthode du pivot positif).\n\nTransparence et Clarté : Évitez le jargon technique. Expliquez les calculs ou les règles de gestion de manière simple pour que le client comprenne la situation, ce qui réduit la frustration même en cas de désaccord.\n\nPreuve d'Étude du Dossier : Pour montrer que la demande a été traitée avec soin, citez systématiquement des éléments précis (montant exact TTC, numéro de facture, dates ou index de consommation....).\n\nIMPORTANT : \n- Pour le canal EMAIL : Génère UNIQUEMENT l'OBJET et le CORPS du message. L'objet doit être concis et précis. Le corps est le contenu principal du message.\n- Pour le canal AM (Application Mobile) : Génère UNIQUEMENT le CORPS du message.\n- Ne génère PAS les salutations, formules de politesse, signature, BP, ni "Mme,". Ces éléments seront ajoutés automatiquement par l'interface.\n\nPour chaque réponse, il faut générer le BASE à la fin, séparé par "***".\n\nSi j'ai mentionné da la réonse que la demande est transmise à un autre service, fournissez un commentaire explicatif pour ce service avant la section BASE. Pour qu'il puisse comprends le traitement qu'on attend d'eux.\n\nSéparateur ()*.\n\nSection BASE (Format Stricte) :\n\nB : Résumé de la demande en une phrase simple ("Le client demande/souhaite").\n\nA : Informations factuelles constatées sur le dossier (ligne vide si aucune).\n\nS : Résumé de la solution apportée ("J'ai informé/fait/proposé/expliqué").\n\nE : Actions possibles sur l'Espace Client ou anticipations indiquées (Indiquer n/a si rien).`;
     
@@ -204,35 +220,71 @@
                     id: Date.now() + 1,
                     titre: "Problème de compteur / Relevé",
                     instructions: "Le client signale une anomalie de compteur ou de consommation. Expliquer qu'ENEDIS gère le réseau. Suggérer un autorelève dans l'Espace Client. Si suspicion de dysfonctionnement, proposer une intervention technique. Ne pas donner de diagnostic technique précis."
+                },
+                {
+                    id: Date.now() + 2,
+                    titre: "Déménagement - Transfert de contrat",
+                    instructions: "Le client souhaite transférer son contrat lors d'un déménagement. Expliquer la marche à suivre : se connecter à l'Espace Client > Mes contrats > Déménagement. Prévoir un délai de 5 à 7 jours ouvrés. Mentionner la possibilité de fournir les relevés de compteurs."
                 }
             ];
             sauvegarderInstructions();
         }
-        afficherListeInstructions();
+        filtrerInstructions();
     }
     
     function sauvegarderInstructions() {
         localStorage.setItem('totalenergies_instructions', JSON.stringify(instructionsEnregistrees));
+        updateInstructionCount();
     }
     
-    function afficherListeInstructions() {
-        const container = document.getElementById('savedInstructionsList');
+    function updateInstructionCount() {
+        const countSpan = document.getElementById('instructionCount');
+        if (countSpan) {
+            countSpan.textContent = `(${instructionsEnregistrees.length})`;
+        }
+    }
+    
+    function filtrerInstructions() {
+        const searchInput = document.getElementById('searchInstructions');
+        const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : "";
+        currentSearchTerm = searchTerm;
+        
+        const container = document.getElementById('instructionsList');
         if (!container) return;
         
-        if (instructionsEnregistrees.length === 0) {
-            container.innerHTML = '<div style="text-align: center; color: #8aa0ae; padding: 20px;">Aucune instruction enregistrée</div>';
+        let filtered = instructionsEnregistrees;
+        
+        if (searchTerm) {
+            filtered = instructionsEnregistrees.filter(inst => 
+                inst.titre.toLowerCase().includes(searchTerm) || 
+                inst.instructions.toLowerCase().includes(searchTerm)
+            );
+        }
+        
+        if (filtered.length === 0) {
+            container.innerHTML = `<div class="no-results">
+                ${searchTerm ? '🔍 Aucune instruction ne correspond à "' + escapeHtml(searchTerm) + '"' : '📭 Aucune instruction enregistrée'}
+                <br><small>Cliquez sur "Enregistrer" pour en créer une nouvelle</small>
+            </div>`;
             return;
         }
         
-        container.innerHTML = instructionsEnregistrees.map(inst => `
+        container.innerHTML = filtered.map(inst => `
             <div class="saved-instruction-item" onclick="chargerInstruction('${inst.id}')">
-                <div class="saved-instruction-title">📌 ${escapeHtml(inst.titre)}</div>
-                <div class="saved-instruction-preview">${escapeHtml(inst.instructions.substring(0, 60))}${inst.instructions.length > 60 ? '...' : ''}</div>
+                <div class="saved-instruction-title">📌 ${highlightText(escapeHtml(inst.titre), searchTerm)}</div>
+                <div class="saved-instruction-preview">${highlightText(escapeHtml(inst.instructions.substring(0, 80)), searchTerm)}${inst.instructions.length > 80 ? '...' : ''}</div>
                 <div class="instruction-actions" onclick="event.stopPropagation()">
+                    <button class="btn-edit" onclick="modifierInstruction(${inst.id})">✏️ Modifier</button>
                     <button class="btn-delete" onclick="supprimerInstruction(${inst.id})">🗑️ Supprimer</button>
                 </div>
             </div>
         `).join('');
+    }
+    
+    function highlightText(text, searchTerm) {
+        if (!searchTerm) return text;
+        const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+        return text.replace(regex, '<mark style="background: #d9b48b; color: white; padding: 0 2px; border-radius: 2px;">$1</mark>');
     }
     
     function escapeHtml(text) {
@@ -249,24 +301,32 @@
         }
     }
     
+    function modifierInstruction(id) {
+        const instruction = instructionsEnregistrees.find(i => i.id == id);
+        if (instruction) {
+            document.getElementById('modalTitle').innerHTML = '✏️ Modifier les instructions type';
+            document.getElementById('instructionTitle').value = instruction.titre;
+            document.getElementById('instructionContent').value = instruction.instructions;
+            document.getElementById('editInstructionId').value = instruction.id;
+            document.getElementById('saveModal').style.display = 'flex';
+        }
+    }
+    
     function supprimerInstruction(id) {
         if (confirm('Supprimer cette instruction type ?')) {
             instructionsEnregistrees = instructionsEnregistrees.filter(i => i.id != id);
             sauvegarderInstructions();
-            afficherListeInstructions();
+            filtrerInstructions();
             showStatus("✅ Instruction supprimée", "success");
         }
     }
     
     function ouvrirModalEnregistrement() {
         const instructionsContent = document.getElementById('instructions').value;
-        if (!instructionsContent.trim()) {
-            showStatus("❌ Le champ instructions est vide. Rien à enregistrer.", "error");
-            return;
-        }
-        
+        document.getElementById('modalTitle').innerHTML = '💾 Enregistrer les instructions type';
         document.getElementById('instructionContent').value = instructionsContent;
         document.getElementById('instructionTitle').value = "";
+        document.getElementById('editInstructionId').value = "";
         document.getElementById('saveModal').style.display = 'flex';
     }
     
@@ -274,11 +334,13 @@
         document.getElementById('saveModal').style.display = 'none';
         document.getElementById('instructionTitle').value = "";
         document.getElementById('instructionContent').value = "";
+        document.getElementById('editInstructionId').value = "";
     }
     
     function enregistrerInstruction() {
         const titre = document.getElementById('instructionTitle').value.trim();
         const contenu = document.getElementById('instructionContent').value.trim();
+        const editId = document.getElementById('editInstructionId').value;
         
         if (!titre) {
             showStatus("❌ Veuillez saisir un titre", "error");
@@ -290,16 +352,30 @@
             return;
         }
         
-        instructionsEnregistrees.unshift({
-            id: Date.now(),
-            titre: titre,
-            instructions: contenu
-        });
+        if (editId) {
+            // Modification
+            const index = instructionsEnregistrees.findIndex(i => i.id == editId);
+            if (index !== -1) {
+                instructionsEnregistrees[index] = {
+                    id: parseInt(editId),
+                    titre: titre,
+                    instructions: contenu
+                };
+                showStatus(`✅ Instruction "${titre}" modifiée avec succès`, "success");
+            }
+        } else {
+            // Nouvelle instruction
+            instructionsEnregistrees.unshift({
+                id: Date.now(),
+                titre: titre,
+                instructions: contenu
+            });
+            showStatus(`✅ Instruction "${titre}" enregistrée avec succès`, "success");
+        }
         
         sauvegarderInstructions();
-        afficherListeInstructions();
+        filtrerInstructions();
         fermerModal();
-        showStatus(`✅ Instruction "${titre}" enregistrée avec succès`, "success");
     }
     
     async function analyserEtProposerInstructions() {
@@ -385,8 +461,10 @@ Format de réponse attendu (uniquement le contenu des instructions, sans comment
             if (!titre) titre = "Instructions générées automatiquement";
             
             // Pré-remplir le modal
+            document.getElementById('modalTitle').innerHTML = '💾 Enregistrer les instructions type';
             document.getElementById('instructionTitle').value = titre.substring(0, 100);
             document.getElementById('instructionContent').value = instructions.trim();
+            document.getElementById('editInstructionId').value = "";
             document.getElementById('saveModal').style.display = 'flex';
             
             showStatus("✅ Analyse terminée. Vous pouvez modifier et enregistrer les instructions proposées.", "success");
