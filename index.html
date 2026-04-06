@@ -32,8 +32,8 @@
         .btn-config:hover { background: #788e9c; }
         .btn-save { background: #d9b48b; color: white; }
         .btn-save:hover { background: #c9a47b; }
-        .btn-analyze { background: #8a6e9e; color: white; }
-        .btn-analyze:hover { background: #7a5c8c; }
+        .btn-prompt { background: #b8860b; color: white; }
+        .btn-prompt:hover { background: #a0750a; }
         .btn-export { background: #5a7c8c; color: white; }
         .btn-export:hover { background: #4a6c7c; }
         .btn-import { background: #6a885c; color: white; }
@@ -80,13 +80,15 @@
         .btn-edit:hover { background: #ecf1f4; }
         .no-results { text-align: center; color: #8aa0ae; padding: 20px; font-size: 11px; }
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
-        .modal-content { background: white; border-radius: 8px; padding: 20px; max-width: 500px; width: 90%; }
+        .modal-content { background: white; border-radius: 8px; padding: 20px; max-width: 700px; width: 90%; max-height: 85vh; overflow-y: auto; }
         .modal input, .modal textarea { width: 100%; margin: 10px 0; padding: 8px; border: 1px solid #d0d8de; border-radius: 4px; box-sizing: border-box; }
-        .modal textarea { min-height: 150px; }
+        .modal textarea { min-height: 400px; font-family: monospace; font-size: 11px; }
         .modal-buttons { display: flex; gap: 10px; justify-content: flex-end; margin-top: 15px; }
         .import-export-group { display: flex; gap: 5px; margin-top: 5px; }
         .import-export-group button { flex: 1; padding: 6px; font-size: 10px; margin: 0; }
         .file-input { display: none; }
+        .prompt-info { background: #f0f6ec; border-left: 3px solid #7c9a6e; padding: 8px; margin-top: 8px; font-size: 10px; border-radius: 4px; }
+        .prompt-info strong { color: #4a6a3a; }
     </style>
 </head>
 <body>
@@ -117,7 +119,7 @@
         </div>
         
         <div class="btn-group">
-            <button class="btn btn-analyze" onclick="analyserEtProposerInstructions()">🔍 ANALYSER & PROPOSER INSTRUCTIONS</button>
+            <button class="btn btn-prompt" onclick="ouvrirEditeurPrompt()">📝 GÉRER LE PROMPT PRINCIPAL</button>
             <button class="btn btn-save" onclick="ouvrirModalEnregistrement()">💾 ENREGISTRER INSTRUCTIONS TYPE</button>
         </div>
         
@@ -147,8 +149,8 @@
         <div class="spacer"></div>
         
         <div class="import-export-group">
-            <button class="btn-export" onclick="exporterInstructions()">📤 EXPORTER LES INSTRUCTIONS</button>
-            <button class="btn-import" onclick="importerInstructions()">📥 IMPORTER DES INSTRUCTIONS</button>
+            <button class="btn-export" onclick="exporterInstructions()">📤 EXPORTER INSTRUCTIONS</button>
+            <button class="btn-import" onclick="importerInstructions()">📥 IMPORTER INSTRUCTIONS</button>
         </div>
         <input type="file" id="fileImport" accept=".json" style="display: none;" onchange="importerFichierInstructions(event)">
         
@@ -209,11 +211,262 @@
     </div>
 </div>
 
+<!-- Modal pour éditer le prompt principal -->
+<div id="promptModal" class="modal">
+    <div class="modal-content">
+        <h3>📝 Éditeur du Prompt Principal</h3>
+        <div class="import-export-group" style="margin-bottom: 15px;">
+            <button class="btn-export" onclick="exporterPromptPrincipal()">📤 EXPORTER LE PROMPT (JSON)</button>
+            <button class="btn-import" onclick="importerFichierPrompt()">📥 IMPORTER UN PROMPT (JSON)</button>
+        </div>
+        <input type="file" id="filePromptImport" accept=".json" style="display: none;" onchange="importerFichierPromptJson(event)">
+        
+        <label>Version du prompt :</label>
+        <input type="text" id="promptVersionInput" placeholder="1.0.0">
+        <label>Contenu du prompt (BASE) :</label>
+        <textarea id="promptContent" rows="15" placeholder="Collez votre prompt personnalisé ici..."></textarea>
+        <div id="promptInfoEdit" class="prompt-info" style="margin-bottom: 10px;">
+            <small>💡 Ce prompt est utilisé comme base pour générer les réponses. Vous pouvez le personnaliser selon vos besoins.</small>
+        </div>
+        <div class="modal-buttons">
+            <button class="btn btn-secondary" onclick="fermerPromptModal()">Annuler</button>
+            <button class="btn btn-primary" onclick="sauvegarderPromptPrincipal()">Sauvegarder le Prompt</button>
+        </div>
+    </div>
+</div>
+
 <script>
     let isGenerating = false;
     let currentSearchTerm = "";
+    let PROMPT_BASE = "";
     
-    const PROMPT_BASE = `Demande du client :\n\n\n\n\nEXPERT RELATION CLIENT TOTALENERGIES\nÉTAPE 1 : ANALYSE PSYCHOLOGIQUE ET CONTEXTUELLE (INTERNE)\nAvant de rédiger, analysez silencieusement le message du client :\n\nSentiment : (Neutre / Agacé / Très Mécontent / Urgent).\n\nEffort Client : Le client a-t-il déjà fait des démarches ou envoyé des pièces ? (Oui/Non).\n\nPosture : - Si Agacé : Empathie immédiate et validation de la frustration.\n\nSi Effort fourni : Valorisation immédiate de sa proactivité ("Je vous félicite pour...", "Je vous remercie pour votre réactivité...").\n\nL'ÉTAPE 1 doit être réalisée sous forme de réflexion interne. Ne rédigez pas cette analyse dans la réponse finale, utilisez-la uniquement pour orienter le ton et la structure de votre message.\n\nÉTAPE 2 : DIRECTIVES DE RÉDACTION (STRICTES)\n\n1. Identité et Posture :\n\nPersona : Conseiller expert du service client TotalEnergies.\n\nTon : Chaleureux, rassurant et pédagogue.\n\nFusion d'accueil : La première phrase doit fusionner l'accueil et la prise en charge, adaptée à l'émotion ou à la situation. Variez les formulations pour éviter toute répétition automatique.\n\n2. Articulation et Fluidité :\n\nRédaction naturelle, sans exagération des connecteurs logiques.\n\nSéparez chaque idée par un paragraphe distinct.\n\nUtilisez le "je" pour vos actions et le "nous" pour représenter TotalEnergies.\n\n3. Règles de Construction Stricte :\n\nFormat : Texte simple (e-mail), sans listes à puces ni tirets (sauf section BASE).\n\nSyntaxes : Mode déclaratif. Utilisez des formes de courtoisie ("Je vous invite à", "Je vous prie de").\n\nChiffres et Unités : Nombres en chiffres (ex: 2 jours, 150 €). Unités obligatoires : €, kWh, kVA.\n\nFormat des Dates : "jour mois année" avec le mois en lettres (ex : 5 mars 2026). Interdiction des barres obliques (/).\n\nTemps : Futur simple pour les actions à venir ("Je ferai").\n\nRubriques Espace Client : Respecter strictement la mise en page : "Nom de la rubrique > Sous-rubrique". N'inventez aucune rubrique. Si aucune n'est fournie, ne proposez pas de chemin.\n\nPièces jointes / Liens : Ne supprimez jamais les liens fournis dans les instructions de réponse.\n\nIdentité Client : NOM, PRÉNOM, ADRESSE en MAJUSCULES. Civilité : Seule l'initiale est au majuscule (Madame/Monsieur).\n\nMajuscules Systématiques : Les noms des services internes doivent porter une majuscule sur chaque initiale (ex: Service Technique, Service Déménagement, Service Paiement).\n\n4. Lexique et Ponctuation :\n\nMots à bannir : problème, malheureusement, recommander, engager, engagement, meilleurs délais, impatience, co-titulaire.\n\nRespecter : ENEDIS, gestionnaire du réseau d'électricité ; GRDF, gestionnaire du réseau de gaz ; Heures Pleines / Heures Creuses ; chèque énergie.\n\nRégle de ponctuation pour la rénumération : Virgule (,) en fin de ligne si la pensée est incomplète, point (.) si la phrase est complète. La dernière ligne finit toujours par un point.\n\n5. Annuaire des Contacts :\n\nService Paiement : 09 70 80 65 45 (lun - sam, 9h - 19h).\n\nService Technique / Clientèle : 09 70 80 69 69 (lun - sam, 9h - 19h).\n\nAgence de Services et de Paiements (ASP) : 08 05 20 48 05.\n\nService Commercial : 30 99 (8h - 20h).\n\nEngagement Satisfaction Client et Pédagogie :\n\nValorisation et Allié du Client : Adoptez une posture de partenaire conseil. Si une demande n'est pas recevable, ne vous contentez pas d'un refus ; expliquez le "pourquoi" pédagogiquement et basculez immédiatement sur une solution alternative ou un conseil utile (méthode du pivot positif).\n\nTransparence et Clarté : Évitez le jargon technique. Expliquez les calculs ou les règles de gestion de manière simple pour que le client comprenne la situation, ce qui réduit la frustration même en cas de désaccord.\n\nPreuve d'Étude du Dossier : Pour montrer que la demande a été traitée avec soin, citez systématiquement des éléments précis (montant exact TTC, numéro de facture, dates ou index de consommation....).\n\nIMPORTANT : \n- Pour le canal EMAIL : Génère UNIQUEMENT l'OBJET et le CORPS du message. L'objet doit être concis et précis. Le corps est le contenu principal du message.\n- Pour le canal AM (Application Mobile) : Génère UNIQUEMENT le CORPS du message.\n- Ne génère PAS les salutations, formules de politesse, signature, BP, ni "Mme,". Ces éléments seront ajoutés automatiquement par l'interface.\n\nPour chaque réponse, il faut générer le BASE à la fin, séparé par "***".\n\nSi j'ai mentionné da la réonse que la demande est transmise à un autre service, fournissez un commentaire explicatif pour ce service avant la section BASE. Pour qu'il puisse comprends le traitement qu'on attend d'eux.\n\nSéparateur ()*.\n\nSection BASE (Format Stricte) :\n\nB : Résumé de la demande en une phrase simple ("Le client demande/souhaite").\n\nA : Informations factuelles constatées sur le dossier (ligne vide si aucune).\n\nS : Résumé de la solution apportée ("J'ai informé/fait/proposé/expliqué").\n\nE : Actions possibles sur l'Espace Client ou anticipations indiquées (Indiquer n/a si rien).`;
+    // Prompt par défaut
+    const DEFAULT_PROMPT = `Demande du client :
+
+
+
+
+EXPERT RELATION CLIENT TOTALENERGIES
+ÉTAPE 1 : ANALYSE PSYCHOLOGIQUE ET CONTEXTUELLE (INTERNE)
+Avant de rédiger, analysez silencieusement le message du client :
+
+Sentiment : (Neutre / Agacé / Très Mécontent / Urgent).
+
+Effort Client : Le client a-t-il déjà fait des démarches ou envoyé des pièces ? (Oui/Non).
+
+Posture : - Si Agacé : Empathie immédiate et validation de la frustration.
+
+Si Effort fourni : Valorisation immédiate de sa proactivité ("Je vous félicite pour...", "Je vous remercie pour votre réactivité...").
+
+L'ÉTAPE 1 doit être réalisée sous forme de réflexion interne. Ne rédigez pas cette analyse dans la réponse finale, utilisez-la uniquement pour orienter le ton et la structure de votre message.
+
+ÉTAPE 2 : DIRECTIVES DE RÉDACTION (STRICTES)
+
+1. Identité et Posture :
+
+Persona : Conseiller expert du service client TotalEnergies.
+
+Ton : Chaleureux, rassurant et pédagogue.
+
+Fusion d'accueil : La première phrase doit fusionner l'accueil et la prise en charge, adaptée à l'émotion ou à la situation. Variez les formulations pour éviter toute répétition automatique.
+
+2. Articulation et Fluidité :
+
+Rédaction naturelle, sans exagération des connecteurs logiques.
+
+Séparez chaque idée par un paragraphe distinct.
+
+Utilisez le "je" pour vos actions et le "nous" pour représenter TotalEnergies.
+
+3. Règles de Construction Stricte :
+
+Format : Texte simple (e-mail), sans listes à puces ni tirets (sauf section BASE).
+
+Syntaxes : Mode déclaratif. Utilisez des formes de courtoisie ("Je vous invite à", "Je vous prie de").
+
+Chiffres et Unités : Nombres en chiffres (ex: 2 jours, 150 €). Unités obligatoires : €, kWh, kVA.
+
+Format des Dates : "jour mois année" avec le mois en lettres (ex : 5 mars 2026). Interdiction des barres obliques (/).
+
+Temps : Futur simple pour les actions à venir ("Je ferai").
+
+Rubriques Espace Client : Respecter strictement la mise en page : "Nom de la rubrique > Sous-rubrique". N'inventez aucune rubrique. Si aucune n'est fournie, ne proposez pas de chemin.
+
+Pièces jointes / Liens : Ne supprimez jamais les liens fournis dans les instructions de réponse.
+
+Identité Client : NOM, PRÉNOM, ADRESSE en MAJUSCULES. Civilité : Seule l'initiale est au majuscule (Madame/Monsieur).
+
+Majuscules Systématiques : Les noms des services internes doivent porter une majuscule sur chaque initiale (ex: Service Technique, Service Déménagement, Service Paiement).
+
+4. Lexique et Ponctuation :
+
+Mots à bannir : problème, malheureusement, recommander, engager, engagement, meilleurs délais, impatience, co-titulaire.
+
+Respecter : ENEDIS, gestionnaire du réseau d'électricité ; GRDF, gestionnaire du réseau de gaz ; Heures Pleines / Heures Creuses ; chèque énergie.
+
+Régle de ponctuation pour la rénumération : Virgule (,) en fin de ligne si la pensée est incomplète, point (.) si la phrase est complète. La dernière ligne finit toujours par un point.
+
+5. Annuaire des Contacts :
+
+Service Paiement : 09 70 80 65 45 (lun - sam, 9h - 19h).
+
+Service Technique / Clientèle : 09 70 80 69 69 (lun - sam, 9h - 19h).
+
+Agence de Services et de Paiements (ASP) : 08 05 20 48 05.
+
+Service Commercial : 30 99 (8h - 20h).
+
+Engagement Satisfaction Client et Pédagogie :
+
+Valorisation et Allié du Client : Adoptez une posture de partenaire conseil. Si une demande n'est pas recevable, ne vous contentez pas d'un refus ; expliquez le "pourquoi" pédagogiquement et basculez immédiatement sur une solution alternative ou un conseil utile (méthode du pivot positif).
+
+Transparence et Clarté : Évitez le jargon technique. Expliquez les calculs ou les règles de gestion de manière simple pour que le client comprenne la situation, ce qui réduit la frustration même en cas de désaccord.
+
+Preuve d'Étude du Dossier : Pour montrer que la demande a été traitée avec soin, citez systématiquement des éléments précis (montant exact TTC, numéro de facture, dates ou index de consommation....).
+
+IMPORTANT : 
+- Pour le canal EMAIL : Génère UNIQUEMENT l'OBJET et le CORPS du message. L'objet doit être concis et précis. Le corps est le contenu principal du message.
+- Pour le canal AM (Application Mobile) : Génère UNIQUEMENT le CORPS du message.
+- Ne génère PAS les salutations, formules de politesse, signature, BP, ni "Mme,". Ces éléments seront ajoutés automatiquement par l'interface.
+
+Pour chaque réponse, il faut générer le BASE à la fin, séparé par "***".
+
+Si j'ai mentionné da la réonse que la demande est transmise à un autre service, fournissez un commentaire explicatif pour ce service avant la section BASE. Pour qu'il puisse comprends le traitement qu'on attend d'eux.
+
+Séparateur ()*.
+
+Section BASE (Format Stricte) :
+
+B : Résumé de la demande en une phrase simple ("Le client demande/souhaite").
+
+A : Informations factuelles constatées sur le dossier (ligne vide si aucune).
+
+S : Résumé de la solution apportée ("J'ai informé/fait/proposé/expliqué").
+
+E : Actions possibles sur l'Espace Client ou anticipations indiquées (Indiquer n/a si rien).`;
+    
+    // Gestion du prompt principal
+    function chargerPromptPrincipal() {
+        const savedPrompt = localStorage.getItem('totalenergies_prompt');
+        const promptMeta = localStorage.getItem('totalenergies_prompt_meta');
+        
+        if (savedPrompt) {
+            PROMPT_BASE = savedPrompt;
+        } else {
+            PROMPT_BASE = DEFAULT_PROMPT;
+            localStorage.setItem('totalenergies_prompt', PROMPT_BASE);
+            const meta = {
+                version: '1.0.0',
+                date: new Date().toLocaleDateString(),
+                timestamp: Date.now()
+            };
+            localStorage.setItem('totalenergies_prompt_meta', JSON.stringify(meta));
+        }
+    }
+    
+    function ouvrirEditeurPrompt() {
+        const meta = JSON.parse(localStorage.getItem('totalenergies_prompt_meta') || '{"version":"1.0.0"}');
+        document.getElementById('promptContent').value = PROMPT_BASE;
+        document.getElementById('promptVersionInput').value = meta.version;
+        document.getElementById('promptModal').style.display = 'flex';
+    }
+    
+    function fermerPromptModal() {
+        document.getElementById('promptModal').style.display = 'none';
+        document.getElementById('promptContent').value = '';
+        document.getElementById('promptVersionInput').value = '';
+    }
+    
+    function sauvegarderPromptPrincipal() {
+        const nouveauPrompt = document.getElementById('promptContent').value;
+        const nouvelleVersion = document.getElementById('promptVersionInput').value || '1.0.0';
+        
+        if (!nouveauPrompt.trim()) {
+            showStatus("❌ Le prompt ne peut pas être vide", "error");
+            return;
+        }
+        
+        PROMPT_BASE = nouveauPrompt;
+        
+        const meta = {
+            version: nouvelleVersion,
+            date: new Date().toLocaleDateString(),
+            timestamp: Date.now()
+        };
+        
+        localStorage.setItem('totalenergies_prompt', PROMPT_BASE);
+        localStorage.setItem('totalenergies_prompt_meta', JSON.stringify(meta));
+        
+        fermerPromptModal();
+        showStatus(`✅ Prompt sauvegardé (version ${nouvelleVersion})`, "success");
+    }
+    
+    function exporterPromptPrincipal() {
+        const meta = JSON.parse(localStorage.getItem('totalenergies_prompt_meta') || '{"version":"1.0.0"}');
+        const promptData = {
+            version: meta.version,
+            date: new Date().toISOString(),
+            prompt: PROMPT_BASE
+        };
+        
+        const dataStr = JSON.stringify(promptData, null, 2);
+        const blob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `prompt_totalenergies_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        showStatus("📤 Prompt exporté avec succès !", "success");
+    }
+    
+    function importerFichierPrompt() {
+        document.getElementById('filePromptImport').click();
+    }
+    
+    function importerFichierPromptJson(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const importedData = JSON.parse(e.target.result);
+                let nouveauPrompt = "";
+                let version = "1.0.0";
+                
+                if (importedData.prompt) {
+                    nouveauPrompt = importedData.prompt;
+                    version = importedData.version || "1.0.0";
+                } else if (typeof importedData === 'string') {
+                    nouveauPrompt = importedData;
+                } else {
+                    throw new Error("Format de fichier invalide");
+                }
+                
+                if (!nouveauPrompt.trim()) {
+                    throw new Error("Le prompt est vide");
+                }
+                
+                document.getElementById('promptContent').value = nouveauPrompt;
+                document.getElementById('promptVersionInput').value = version;
+                showStatus("✅ Fichier chargé, cliquez sur Sauvegarder pour appliquer", "success");
+                
+            } catch (error) {
+                showStatus(`❌ Erreur lors de l'import: ${error.message}`, "error");
+            }
+        };
+        
+        reader.onerror = function() {
+            showStatus("❌ Erreur de lecture du fichier", "error");
+        };
+        
+        reader.readAsText(file);
+        event.target.value = '';
+    }
     
     // Gestion des instructions enregistrées
     let instructionsEnregistrees = [];
@@ -223,7 +476,6 @@
         if (saved) {
             instructionsEnregistrees = JSON.parse(saved);
         } else {
-            // Instructions par défaut
             instructionsEnregistrees = [
                 {
                     id: Date.now(),
@@ -258,7 +510,6 @@
         }
     }
     
-    // EXPORT des instructions vers un fichier JSON
     function exporterInstructions() {
         if (instructionsEnregistrees.length === 0) {
             showStatus("❌ Aucune instruction à exporter", "error");
@@ -282,10 +533,9 @@
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
         
-        showStatus(`📤 ${instructionsEnregistrees.length} instructions exportées avec succès !`, "success");
+        showStatus(`📤 ${instructionsEnregistrees.length} instructions exportées !`, "success");
     }
     
-    // IMPORT des instructions depuis un fichier
     function importerInstructions() {
         document.getElementById('fileImport').click();
     }
@@ -300,7 +550,6 @@
                 const importedData = JSON.parse(e.target.result);
                 let nouvellesInstructions = [];
                 
-                // Vérifier le format du fichier importé
                 if (importedData.instructions && Array.isArray(importedData.instructions)) {
                     nouvellesInstructions = importedData.instructions;
                 } else if (Array.isArray(importedData)) {
@@ -309,47 +558,36 @@
                     throw new Error("Format de fichier invalide");
                 }
                 
-                // Vérifier que chaque instruction a les bons champs
                 nouvellesInstructions = nouvellesInstructions.filter(inst => inst.titre && inst.instructions);
                 
                 if (nouvellesInstructions.length === 0) {
                     throw new Error("Aucune instruction valide trouvée");
                 }
                 
-                // Générer de nouveaux IDs pour éviter les conflits
                 nouvellesInstructions = nouvellesInstructions.map(inst => ({
                     ...inst,
-                    id: Date.now() + Math.random() * 10000 + inst.id
+                    id: Date.now() + Math.random() * 10000 + (inst.id || 0)
                 }));
                 
-                // Fusionner avec les instructions existantes (option: remplacer ou ajouter)
-                const choix = confirm(`${nouvellesInstructions.length} instruction(s) trouvée(s).\n\nCliquez sur OK pour AJOUTER à vos instructions existantes.\nCliquez sur Annuler pour REMPLACER complètement.`);
+                const choix = confirm(`${nouvellesInstructions.length} instruction(s) trouvée(s).\n\nOK pour AJOUTER, Annuler pour REMPLACER`);
                 
                 if (choix) {
-                    // Ajouter aux existantes
                     instructionsEnregistrees = [...nouvellesInstructions, ...instructionsEnregistrees];
-                    showStatus(`✅ ${nouvellesInstructions.length} instruction(s) ajoutée(s) avec succès !`, "success");
+                    showStatus(`✅ ${nouvellesInstructions.length} instruction(s) ajoutée(s)`, "success");
                 } else {
-                    // Remplacer complètement
                     instructionsEnregistrees = nouvellesInstructions;
-                    showStatus(`✅ ${nouvellesInstructions.length} instruction(s) importée(s) (remplacement total)`, "success");
+                    showStatus(`✅ ${nouvellesInstructions.length} instruction(s) importée(s)`, "success");
                 }
                 
                 sauvegarderInstructions();
                 filtrerInstructions();
                 
             } catch (error) {
-                showStatus(`❌ Erreur lors de l'import: ${error.message}`, "error");
+                showStatus(`❌ Erreur: ${error.message}`, "error");
             }
         };
         
-        reader.onerror = function() {
-            showStatus("❌ Erreur de lecture du fichier", "error");
-        };
-        
         reader.readAsText(file);
-        
-        // Réinitialiser l'input file pour permettre de réimporter le même fichier
         event.target.value = '';
     }
     
@@ -372,8 +610,7 @@
         
         if (filtered.length === 0) {
             container.innerHTML = `<div class="no-results">
-                ${searchTerm ? '🔍 Aucune instruction ne correspond à "' + escapeHtml(searchTerm) + '"' : '📭 Aucune instruction enregistrée'}
-                <br><small>Cliquez sur "Enregistrer" pour en créer une nouvelle</small>
+                ${searchTerm ? '🔍 Aucune instruction pour "' + escapeHtml(searchTerm) + '"' : '📭 Aucune instruction'}
             </div>`;
             return;
         }
@@ -406,14 +643,14 @@
         const instruction = instructionsEnregistrees.find(i => i.id == id);
         if (instruction) {
             document.getElementById('instructions').value = instruction.instructions;
-            showStatus(`✅ Instruction "${instruction.titre}" chargée dans le champ instructions`, "success");
+            showStatus(`✅ "${instruction.titre}" chargé`, "success");
         }
     }
     
     function modifierInstruction(id) {
         const instruction = instructionsEnregistrees.find(i => i.id == id);
         if (instruction) {
-            document.getElementById('modalTitle').innerHTML = '✏️ Modifier les instructions type';
+            document.getElementById('modalTitle').innerHTML = '✏️ Modifier';
             document.getElementById('instructionTitle').value = instruction.titre;
             document.getElementById('instructionContent').value = instruction.instructions;
             document.getElementById('editInstructionId').value = instruction.id;
@@ -422,18 +659,17 @@
     }
     
     function supprimerInstruction(id) {
-        if (confirm('Supprimer cette instruction type ?')) {
+        if (confirm('Supprimer ?')) {
             instructionsEnregistrees = instructionsEnregistrees.filter(i => i.id != id);
             sauvegarderInstructions();
             filtrerInstructions();
-            showStatus("✅ Instruction supprimée", "success");
+            showStatus("✅ Supprimée", "success");
         }
     }
     
     function ouvrirModalEnregistrement() {
-        const instructionsContent = document.getElementById('instructions').value;
-        document.getElementById('modalTitle').innerHTML = '💾 Enregistrer les instructions type';
-        document.getElementById('instructionContent').value = instructionsContent;
+        document.getElementById('modalTitle').innerHTML = '💾 Enregistrer';
+        document.getElementById('instructionContent').value = document.getElementById('instructions').value;
         document.getElementById('instructionTitle').value = "";
         document.getElementById('editInstructionId').value = "";
         document.getElementById('saveModal').style.display = 'flex';
@@ -451,35 +687,20 @@
         const contenu = document.getElementById('instructionContent').value.trim();
         const editId = document.getElementById('editInstructionId').value;
         
-        if (!titre) {
-            showStatus("❌ Veuillez saisir un titre", "error");
-            return;
-        }
-        
-        if (!contenu) {
-            showStatus("❌ Aucun contenu à enregistrer", "error");
+        if (!titre || !contenu) {
+            showStatus("❌ Titre et contenu requis", "error");
             return;
         }
         
         if (editId) {
-            // Modification
             const index = instructionsEnregistrees.findIndex(i => i.id == editId);
             if (index !== -1) {
-                instructionsEnregistrees[index] = {
-                    id: parseInt(editId),
-                    titre: titre,
-                    instructions: contenu
-                };
-                showStatus(`✅ Instruction "${titre}" modifiée avec succès`, "success");
+                instructionsEnregistrees[index] = { id: parseInt(editId), titre, instructions: contenu };
+                showStatus(`✅ "${titre}" modifié`, "success");
             }
         } else {
-            // Nouvelle instruction
-            instructionsEnregistrees.unshift({
-                id: Date.now(),
-                titre: titre,
-                instructions: contenu
-            });
-            showStatus(`✅ Instruction "${titre}" enregistrée avec succès`, "success");
+            instructionsEnregistrees.unshift({ id: Date.now(), titre, instructions: contenu });
+            showStatus(`✅ "${titre}" enregistré`, "success");
         }
         
         sauvegarderInstructions();
@@ -487,124 +708,20 @@
         fermerModal();
     }
     
-    async function analyserEtProposerInstructions() {
-        const demande = document.getElementById('demande').value.trim();
-        const reponse = document.getElementById('reponse_client').value.trim();
-        
-        if (!demande && !reponse) {
-            showStatus("❌ Veuillez saisir une demande et/ou une réponse à analyser", "error");
-            return;
-        }
-        
-        const apiKey = document.getElementById('api_key').value.trim();
-        if (!apiKey) {
-            showStatus("❌ Veuillez configurer votre clé API pour l'analyse", "error");
-            return;
-        }
-        
-        showStatus("<span class='loading'></span> Analyse en cours...", "info");
-        
-        const promptAnalyse = `Analyse la demande client et la réponse apportée ci-dessous. 
-        
-DEMANDE CLIENT :
-${demande || "Non renseignée"}
-
-RÉPONSE APPORTÉE :
-${reponse || "Non renseignée"}
-
-OBJECTIF : Générer des instructions type que je pourrais réutiliser pour traiter des demandes similaires.
-
-Ces instructions doivent être claires, structurées et exploitables par un conseiller (ou une IA) pour répondre à une demande similaire.
-
-Format de réponse attendu (uniquement le contenu des instructions, sans commentaires supplémentaires) :
-
-[Titre de l'instruction]
-
-[Instructions détaillées : 
-- Analyser le contexte spécifique
-- Adapter le ton selon l'émotion détectée
-- Étapes clés à suivre
-- Points d'attention particuliers
-- Éléments à ne pas oublier]`;
-
-        try {
-            const model = "gemini-2.0-flash";
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: promptAnalyse }] }],
-                    generationConfig: {
-                        temperature: 0.7,
-                        maxOutputTokens: 1024
-                    }
-                })
-            });
-            
-            if (!response.ok) {
-                throw new Error("Erreur lors de l'analyse");
-            }
-            
-            const data = await response.json();
-            let generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-            
-            if (!generatedText) {
-                throw new Error("Réponse vide");
-            }
-            
-            // Extraire le titre et les instructions
-            const lines = generatedText.split('\n');
-            let titre = "";
-            let instructions = "";
-            let inTitle = true;
-            
-            for (let line of lines) {
-                if (inTitle && line.trim() && !line.startsWith('-') && !line.startsWith('•')) {
-                    titre = line.trim();
-                    inTitle = false;
-                } else if (!inTitle) {
-                    instructions += line + '\n';
-                }
-            }
-            
-            if (!titre) titre = "Instructions générées automatiquement";
-            
-            // Pré-remplir le modal
-            document.getElementById('modalTitle').innerHTML = '💾 Enregistrer les instructions type';
-            document.getElementById('instructionTitle').value = titre.substring(0, 100);
-            document.getElementById('instructionContent').value = instructions.trim();
-            document.getElementById('editInstructionId').value = "";
-            document.getElementById('saveModal').style.display = 'flex';
-            
-            showStatus("✅ Analyse terminée. Vous pouvez modifier et enregistrer les instructions proposées.", "success");
-            
-        } catch (error) {
-            console.error('Erreur analyse:', error);
-            showStatus(`❌ Erreur lors de l'analyse: ${error.message}`, "error");
-        }
-    }
-    
+    // Fonctions existantes (date, heure, structure, etc.)
     function extraireDateHeureDemande(texteDemande) {
         const datePattern = /(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s+(\d{1,2})[:h](\d{2})/i;
         const match = texteDemande.match(datePattern);
-        
         if (match) {
             let jour = match[1].padStart(2, '0');
             let mois = match[2].padStart(2, '0');
             let annee = match[3];
             let heure = match[4].padStart(2, '0');
             let minute = match[5];
-            
-            if (annee.length === 2) {
-                annee = '20' + annee;
-            }
-            
+            if (annee.length === 2) annee = '20' + annee;
             const moisNoms = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
-            const moisIndex = parseInt(mois, 10) - 1;
-            const moisNom = moisNoms[moisIndex];
-            
             return {
-                date: `${parseInt(jour, 10)} ${moisNom} ${annee}`,
+                date: `${parseInt(jour, 10)} ${moisNoms[parseInt(mois, 10)-1]} ${annee}`,
                 heure: `${heure}:${minute}`,
                 found: true
             };
@@ -617,66 +734,30 @@ Format de réponse attendu (uniquement le contenu des instructions, sans comment
         const heures = now.getHours();
         const minutes = now.getMinutes();
         const heureMinute = heures + minutes / 60;
-        
-        if (heureMinute >= 2 && heureMinute < 12) {
-            return "une excellente journée";
-        }
-        else if (heureMinute >= 12 && heureMinute < 17) {
-            return "un excellent après-midi";
-        }
-        else {
-            return "une excellente soirée";
-        }
+        if (heureMinute >= 2 && heureMinute < 12) return "une excellente journée";
+        if (heureMinute >= 12 && heureMinute < 17) return "un excellent après-midi";
+        return "une excellente soirée";
     }
     
     function getStructureComplete() {
         const canal = document.getElementById('canal_choix').value;
         const momentPhrase = getMomentDeLaJournee();
-        
         if (canal === "EMAIL") {
-            return {
-                entete: `BP : \n\nMme ,\n\n`,
-                corps: "",
-                signature: `\n\nJe reste à votre disposition pour toute information complémentaire et vous souhaite de passer ${momentPhrase}.\n\nCordialement,`
-            };
+            return { entete: `BP : \n\nMme ,\n\n`, corps: "", signature: `\n\nJe reste à votre disposition pour toute information complémentaire et vous souhaite de passer ${momentPhrase}.\n\nCordialement,` };
         } else {
             const now = new Date();
             const heures = now.getHours();
-            const minutes = now.getMinutes();
-            const heureMinute = heures + minutes / 60;
-            let salutation = "Bonjour";
-            if (heureMinute >= 17 || heureMinute < 2) {
-                salutation = "Bonsoir";
-            } else if (heureMinute >= 2 && heureMinute < 12) {
-                salutation = "Bonjour";
-            } else if (heureMinute >= 12 && heureMinute < 17) {
-                salutation = "Bonjour";
-            }
-            
-            return {
-                entete: `${salutation} Monsieur,\n\n`,
-                corps: "",
-                signature: `\n\nJe reste à votre disposition pour toute information complémentaire et vous souhaite de passer ${momentPhrase}.\n\nCordialement,\n\nSolofonirina`
-            };
+            let salutation = (heures >= 17 || heures < 2) ? "Bonsoir" : "Bonjour";
+            return { entete: `${salutation} Monsieur,\n\n`, corps: "", signature: `\n\nJe reste à votre disposition pour toute information complémentaire et vous souhaite de passer ${momentPhrase}.\n\nCordialement,\n\nSolofonirina` };
         }
     }
     
     function majStructureReponse() {
         const reponseArea = document.getElementById('reponse_client');
-        const currentContent = reponseArea.value;
         const canal = document.getElementById('canal_choix').value;
         const structure = getStructureComplete();
-        
-        if (canal === "EMAIL") {
-            const hasEmailStructure = currentContent.includes('Objet :') && currentContent.includes('BP :');
-            if (!hasEmailStructure || !currentContent.trim()) {
-                reponseArea.value = structure.entete + structure.signature;
-            }
-        } else {
-            const hasMobileStructure = (currentContent.includes('Bonjour') || currentContent.includes('Bonsoir'));
-            if (!hasMobileStructure || !currentContent.trim()) {
-                reponseArea.value = structure.entete + structure.signature;
-            }
+        if (!reponseArea.value.trim()) {
+            reponseArea.value = structure.entete + structure.signature;
         }
         updateMomentInfo();
     }
@@ -686,13 +767,7 @@ Format de réponse attendu (uniquement le contenu des instructions, sans comment
         const infoDiv = document.getElementById('momentInfo');
         if (infoDiv) {
             const now = new Date();
-            const heures = now.getHours();
-            const minutes = now.getMinutes().toString().padStart(2, '0');
-            let plage = "";
-            if (heures >= 2 && heures <= 11) plage = "2h-11h59";
-            else if (heures >= 12 && heures <= 16) plage = "12h-16h59";
-            else plage = "17h-1h59";
-            infoDiv.innerHTML = `🕐 ${moment.toUpperCase()} (${plage} - ${heures}:${minutes})`;
+            infoDiv.innerHTML = `🕐 ${moment.toUpperCase()} (${now.getHours()}:${now.getMinutes().toString().padStart(2,'0')})`;
         }
     }
     
@@ -703,70 +778,39 @@ Format de réponse attendu (uniquement le contenu des instructions, sans comment
     }
     
     function toggleConfigPanel() {
-        const panel = document.getElementById('configPanel');
-        panel.classList.toggle('show');
+        document.getElementById('configPanel').classList.toggle('show');
     }
     
     async function testerCleApi() {
         const apiKey = document.getElementById('api_key').value.trim();
-        if (!apiKey) {
-            showStatus("❌ Veuillez entrer une clé API d'abord", "error");
-            return;
-        }
-        
-        showStatus("<span class='loading'></span> Test de la clé API...", "info");
-        
+        if (!apiKey) { showStatus("❌ Clé API requise", "error"); return; }
+        showStatus("<span class='loading'></span> Test...", "info");
         try {
             const response = await fetch(`https://generativelanguage.googleapis.com/v1/models?key=${apiKey}`);
-            const data = await response.json();
-            
-            if (response.ok) {
-                const modelCount = data.models?.length || 0;
-                showStatus(`✅ Clé valide ! ${modelCount} modèles disponibles.`, "success");
-            } else {
-                showStatus(`❌ Clé invalide: ${data.error?.message || 'Erreur inconnue'}`, "error");
-            }
-        } catch (error) {
-            showStatus(`❌ Erreur: ${error.message}`, "error");
-        }
+            if (response.ok) showStatus("✅ Clé valide !", "success");
+            else showStatus("❌ Clé invalide", "error");
+        } catch (error) { showStatus(`❌ Erreur: ${error.message}`, "error"); }
     }
     
     async function verifierModelesDisponibles() {
         const apiKey = document.getElementById('api_key').value.trim();
-        if (!apiKey) {
-            showStatus("❌ Veuillez entrer une clé API d'abord", "error");
-            return;
-        }
-        
-        showStatus("<span class='loading'></span> Récupération des modèles disponibles...", "info");
-        
+        if (!apiKey) { showStatus("❌ Clé API requise", "error"); return; }
+        showStatus("<span class='loading'></span> Récupération...", "info");
         try {
             const response = await fetch(`https://generativelanguage.googleapis.com/v1/models?key=${apiKey}`);
             const data = await response.json();
-            
             if (response.ok && data.models) {
-                const modelsList = data.models.map(m => m.name.replace('models/', '')).join(', ');
                 const gemini3Models = data.models.filter(m => m.name.includes('gemini-3')).length;
-                const gemini25Models = data.models.filter(m => m.name.includes('gemini-2.5')).length;
-                
-                showStatus(`📋 Modèles: ${gemini3Models} Gemini 3, ${gemini25Models} Gemini 2.5. Liste: ${modelsList.substring(0, 150)}...`, "success");
-            } else {
-                showStatus(`❌ Erreur: ${data.error?.message || 'Erreur'}`, "error");
-            }
-        } catch (error) {
-            showStatus(`❌ Erreur: ${error.message}`, "error");
-        }
+                showStatus(`📋 ${gemini3Models} modèles Gemini 3 disponibles`, "success");
+            } else showStatus("❌ Erreur", "error");
+        } catch (error) { showStatus(`❌ Erreur`, "error"); }
     }
     
     function showStatus(message, type = "info") {
         const statusDiv = document.getElementById('statusMessage');
         statusDiv.innerHTML = message;
         statusDiv.className = `status-bar status-${type}`;
-        setTimeout(() => {
-            if (document.getElementById('statusMessage').innerHTML === message) {
-                statusDiv.className = "status-bar";
-            }
-        }, 6000);
+        setTimeout(() => { if (document.getElementById('statusMessage').innerHTML === message) statusDiv.className = "status-bar"; }, 5000);
     }
     
     function construirePromptComplet() {
@@ -774,159 +818,50 @@ Format de réponse attendu (uniquement le contenu des instructions, sans comment
         const dem = document.getElementById('demande').value.trim();
         const inst = document.getElementById('instructions').value.trim();
         const canal = document.getElementById('canal_choix').value;
-        
-        if (!dem) {
-            throw new Error("Veuillez saisir une demande client à traiter.");
-        }
-        
-        let instructionCanal = "";
-        if (canal === "EMAIL") {
-            instructionCanal = `\n\nINSTRUCTION CANAL EMAIL : Génère d'abord l'OBJET sur une ligne, puis le CORPS du message. Sépare l'objet du corps par un saut de ligne. Format attendu :\nObjet: [votre objet ici]\n\n[corps du message]`;
-        } else {
-            instructionCanal = `\n\nINSTRUCTION CANAL APPLICATION MOBILE : Génère uniquement le CORPS du message (sans salutation, ni signature).`;
-        }
-        
-        return `${PROMPT_BASE}\n\n****************************\nHISTORIQUE :\n${hist || "Aucun historique"}\n\nDEMANDE CLIENT :\n${dem}\n\nINSTRUCTIONS COMPLÉMENTAIRES :\n${inst || "Aucune instruction spécifique"}${instructionCanal}\n\n************************************\nGénère maintenant la réponse selon les instructions du canal, suivie de "***" et du BASE.`;
+        if (!dem) throw new Error("Demande client requise");
+        let instructionCanal = canal === "EMAIL" ? `\n\nINSTRUCTION CANAL EMAIL : Génère OBJET + CORPS\nObjet: [titre]\n\n[corps]` : `\n\nINSTRUCTION CANAL AM : Génère uniquement le CORPS (sans salutation)`;
+        return `${PROMPT_BASE}\n\n****************************\nHISTORIQUE :\n${hist || "Aucun"}\n\nDEMANDE CLIENT :\n${dem}\n\nINSTRUCTIONS :\n${inst || "Aucune"}${instructionCanal}\n\n************************************\nGénère la réponse + "***" + BASE.`;
     }
     
     async function genererAvecGemini() {
         const apiKey = document.getElementById('api_key').value.trim();
         const model = document.getElementById('model_select').value;
         const canal = document.getElementById('canal_choix').value;
-        
-        if (!apiKey) {
-            showStatus("❌ Veuillez configurer votre clé API", "error");
-            return;
-        }
-        
-        if (isGenerating) {
-            showStatus("⏳ Génération en cours...", "info");
-            return;
-        }
-        
+        if (!apiKey) { showStatus("❌ Configurez l'API", "error"); return; }
+        if (isGenerating) return;
         let prompt;
-        try {
-            prompt = construirePromptComplet();
-        } catch (error) {
-            showStatus(`❌ ${error.message}`, "error");
-            return;
-        }
-        
+        try { prompt = construirePromptComplet(); } catch(e) { showStatus(`❌ ${e.message}`, "error"); return; }
         isGenerating = true;
-        const modelDisplay = model.includes('gemini-3') ? 'Gemini 3' : 'Gemini 2.5';
-        showStatus(`<span class='loading'></span> Génération avec ${modelDisplay} (${model})...`, "info");
-        
+        showStatus(`<span class='loading'></span> Génération...`, "info");
         try {
             const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: prompt }] }],
-                    generationConfig: {
-                        temperature: 0.7,
-                        maxOutputTokens: 4096,
-                        topP: 0.95
-                    }
-                })
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7, maxOutputTokens: 4096 } })
             });
-            
-            if (!response.ok) {
-                const errorData = await response.json();
-                let errorMsg = errorData.error?.message || `Erreur ${response.status}`;
-                
-                if (errorMsg.includes('not found') && model.includes('gemini-3')) {
-                    errorMsg = `Le modèle ${model} n'est pas encore disponible sur votre compte. Utilisez un modèle Gemini 2.5 (stable) en attendant.`;
-                }
-                throw new Error(errorMsg);
-            }
-            
+            if (!response.ok) throw new Error("Erreur API");
             const data = await response.json();
             let generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-            
-            if (!generatedText) {
-                throw new Error("Réponse vide de l'API");
-            }
-            
-            let objet = "";
-            let corpsMessage = "";
-            let baseContent = "";
-            
-            if (canal === "EMAIL") {
-                const objetMatch = generatedText.match(/Objet\s*:\s*(.+?)(?:\n|$)/i);
-                if (objetMatch) {
-                    objet = objetMatch[1].trim();
-                    let tempText = generatedText.replace(/Objet\s*:\s*.+?(?:\n|$)/i, '');
-                    if (tempText.includes('***')) {
-                        const parts = tempText.split('***');
-                        corpsMessage = parts[0].trim();
-                        baseContent = parts[1].trim();
-                    } else {
-                        const baseMatch = tempText.match(/(B\s*:[\s\S]*)/i);
-                        if (baseMatch) {
-                            const baseIndex = tempText.indexOf(baseMatch[0]);
-                            corpsMessage = tempText.substring(0, baseIndex).trim();
-                            baseContent = baseMatch[0].trim();
-                        } else {
-                            corpsMessage = tempText.trim();
-                            baseContent = "B : \n\nA : \n\nS : \n\nE : n/a";
-                        }
-                    }
-                } else {
-                    corpsMessage = generatedText.trim();
-                    baseContent = "B : \n\nA : \n\nS : \n\nE : n/a";
-                }
+            if (!generatedText) throw new Error("Réponse vide");
+            let corpsMessage = "", baseContent = "";
+            if (generatedText.includes('***')) {
+                const parts = generatedText.split('***');
+                corpsMessage = parts[0].trim();
+                baseContent = parts[1].trim();
             } else {
-                if (generatedText.includes('***')) {
-                    const parts = generatedText.split('***');
-                    corpsMessage = parts[0].trim();
-                    baseContent = parts[1].trim();
-                } else {
-                    const baseMatch = generatedText.match(/(B\s*:[\s\S]*)/i);
-                    if (baseMatch) {
-                        const baseIndex = generatedText.indexOf(baseMatch[0]);
-                        corpsMessage = generatedText.substring(0, baseIndex).trim();
-                        baseContent = baseMatch[0].trim();
-                    } else {
-                        corpsMessage = generatedText.trim();
-                        baseContent = "B : \n\nA : \n\nS : \n\nE : n/a";
-                    }
-                }
+                corpsMessage = generatedText.trim();
+                baseContent = "B : \n\nA : \n\nS : \n\nE : n/a";
             }
-            
             const structure = getStructureComplete();
-            let reponseComplete;
-            
-            if (canal === "EMAIL") {
-                if (objet) {
-                    reponseComplete = `Objet : ${objet}\n\nBP : \n\nMme ,\n\n${corpsMessage}${structure.signature}`;
-                } else {
-                    reponseComplete = structure.entete + corpsMessage + structure.signature;
-                }
-            } else {
-                reponseComplete = structure.entete + corpsMessage + structure.signature;
-            }
-            
-            document.getElementById('reponse_client').value = reponseComplete;
-            document.getElementById('base_area').value = baseContent || "B : \n\nA : \n\nS : \n\nE : n/a";
-            
-            showStatus(`✅ Génération réussie avec ${modelDisplay} !`, "success");
-            
-        } catch (error) {
-            console.error('Erreur:', error);
-            showStatus(`❌ Erreur: ${error.message}`, "error");
-        } finally {
-            isGenerating = false;
-        }
+            document.getElementById('reponse_client').value = structure.entete + corpsMessage + structure.signature;
+            document.getElementById('base_area').value = baseContent;
+            showStatus("✅ Généré !", "success");
+        } catch(e) { showStatus(`❌ ${e.message}`, "error"); }
+        finally { isGenerating = false; }
     }
     
     function copierPromptComplet() {
-        try {
-            const prompt = construirePromptComplet();
-            copyToClipboard(prompt);
-            showStatus("📋 Prompt copié !", "success");
-        } catch (error) {
-            showStatus(`❌ ${error.message}`, "error");
-        }
+        try { copyToClipboard(construirePromptComplet()); showStatus("📋 Prompt copié !", "success"); }
+        catch(e) { showStatus(`❌ ${e.message}`, "error"); }
     }
     
     function preparerEtCopierHisto() {
@@ -934,45 +869,19 @@ Format de réponse attendu (uniquement le contenu des instructions, sans comment
         const r = document.getElementById('reponse_client').value;
         const b = document.getElementById('base_area').value;
         const canal = document.getElementById('canal_choix').value;
-        
-        if (!d && !r) {
-            showStatus("❌ Aucune donnée à historiser", "error");
-            return;
-        }
-        
-        const dateHeureExtraite = extraireDateHeureDemande(d);
-        
-        let datePosteFormatee;
-        let heureDemande;
-        
-        if (dateHeureExtraite.found) {
-            datePosteFormatee = dateHeureExtraite.date;
-            heureDemande = dateHeureExtraite.heure;
-        } else {
-            const now = new Date();
-            const moisNoms = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
-            datePosteFormatee = `${now.getDate()} ${moisNoms[now.getMonth()]} ${now.getFullYear()}`;
-            
-            const heureMatch = d.match(/([01]?[0-9]|2[0-3])[:h][0-5][0-9]/i);
-            heureDemande = heureMatch ? heureMatch[0].replace('h', ':') : "--:--";
-        }
-        
-        const labelEntete = (canal === "EMAIL") ? `Mail Odigo du ${datePosteFormatee} à ${heureDemande}` : `AM du ${datePosteFormatee} à ${heureDemande}`;
-        
-        const bloc = `${b || "B : \n\nA : \n\nS : \n\nE : "}\n\n***************************\n\n${labelEntete}\n\nRequête client :\n${d || "(non renseignée)"}\n\nRéponse apportée :\n\n${r || "(non renseignée)"}`;
-        
+        const dateHeure = extraireDateHeureDemande(d);
+        let dateStr = dateHeure.found ? `${dateHeure.date} à ${dateHeure.heure}` : new Date().toLocaleDateString();
+        const label = (canal === "EMAIL") ? `Mail Odigo du ${dateStr}` : `AM du ${dateStr}`;
+        const bloc = `${b}\n\n***************************\n\n${label}\n\nRequête :\n${d}\n\nRéponse :\n${r}`;
         copyToClipboard(bloc);
         showStatus("📋 Historisation copiée !", "success");
     }
     
     function copierTexte(id) {
-        const element = document.getElementById(id);
-        if (!element.value.trim()) {
-            showStatus(`⚠️ Champ vide`, "warning");
-            return;
-        }
-        copyToClipboard(element.value);
-        showStatus(`📋 Copié !`, "success");
+        const el = document.getElementById(id);
+        if (!el.value.trim()) { showStatus("⚠️ Vide", "warning"); return; }
+        copyToClipboard(el.value);
+        showStatus("📋 Copié !", "success");
     }
     
     function copyToClipboard(text) {
@@ -987,30 +896,18 @@ Format de réponse attendu (uniquement le contenu des instructions, sans comment
     }
     
     function toutVider() {
-        if(confirm("Effacer tous les champs ?")) {
+        if(confirm("Tout effacer ?")) {
             ['historique', 'demande', 'instructions', 'base_area', 'reponse_client'].forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.value = "";
+                document.getElementById(id).value = "";
             });
             reinitialiserStructure();
-            showStatus("✅ Tout a été vidé", "success");
+            showStatus("✅ Tout vidé", "success");
         }
     }
     
-    function sauvegarderCleApi() {
-        const apiKey = document.getElementById('api_key').value;
-        if (apiKey) localStorage.setItem('gemini_api_key', apiKey);
-    }
-    
-    function sauvegarderModele() {
-        const model = document.getElementById('model_select').value;
-        localStorage.setItem('gemini_model', model);
-    }
-    
-    function sauvegarderCanal() {
-        const canal = document.getElementById('canal_choix').value;
-        localStorage.setItem('canal_choix', canal);
-    }
+    function sauvegarderCleApi() { localStorage.setItem('gemini_api_key', document.getElementById('api_key').value); }
+    function sauvegarderModele() { localStorage.setItem('gemini_model', document.getElementById('model_select').value); }
+    function sauvegarderCanal() { localStorage.setItem('canal_choix', document.getElementById('canal_choix').value); }
     
     function chargerDonnees() {
         const savedKey = localStorage.getItem('gemini_api_key');
@@ -1021,37 +918,23 @@ Format de réponse attendu (uniquement le contenu des instructions, sans comment
         if (savedCanal) document.getElementById('canal_choix').value = savedCanal;
     }
     
-    // Fermer le modal en cliquant en dehors
     window.onclick = function(event) {
-        const modal = document.getElementById('saveModal');
-        if (event.target === modal) {
-            fermerModal();
-        }
+        if (event.target === document.getElementById('saveModal')) fermerModal();
+        if (event.target === document.getElementById('promptModal')) fermerPromptModal();
     }
     
     setInterval(updateMomentInfo, 60000);
     
     document.addEventListener('DOMContentLoaded', () => {
+        chargerPromptPrincipal();
         chargerDonnees();
         chargerInstructionsEnregistrees();
         majStructureReponse();
         updateMomentInfo();
-        
         document.getElementById('api_key').addEventListener('change', sauvegarderCleApi);
-        document.getElementById('api_key').addEventListener('blur', sauvegarderCleApi);
         document.getElementById('model_select').addEventListener('change', sauvegarderModele);
         document.getElementById('canal_choix').addEventListener('change', sauvegarderCanal);
-        
-        ['historique', 'demande', 'instructions'].forEach(id => {
-            document.getElementById(id).addEventListener('keydown', (e) => {
-                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-                    e.preventDefault();
-                    genererAvecGemini();
-                }
-            });
-        });
-        
-        showStatus("✅ Prêt ! Utilisez Export/Import pour sauvegarder vos instructions d'un poste à l'autre.", "success");
+        showStatus("✅ Prêt ! Utilisez 'GÉRER LE PROMPT' pour personnaliser le prompt principal.", "success");
     });
 </script>
 
