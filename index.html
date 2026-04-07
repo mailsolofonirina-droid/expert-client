@@ -869,10 +869,45 @@ E : Actions possibles sur l'Espace Client ou anticipations indiquées (Indiquer 
         const r = document.getElementById('reponse_client').value;
         const b = document.getElementById('base_area').value;
         const canal = document.getElementById('canal_choix').value;
-        const dateHeure = extraireDateHeureDemande(d);
-        let dateStr = dateHeure.found ? `${dateHeure.date} à ${dateHeure.heure}` : new Date().toLocaleDateString();
-        const label = (canal === "EMAIL") ? `Mail Odigo du ${dateStr}` : `AM du ${dateStr}`;
-        const bloc = `${b}\n\n***************************\n\n${label}\n\nRequête :\n${d}\n\nRéponse :\n${r}`;
+       function preparerEtCopierHisto() {
+    const d = document.getElementById('demande').value;
+    const r = document.getElementById('reponse_client').value;
+    const b = document.getElementById('base_area').value;
+    const canal = document.getElementById('canal_choix').value;
+    
+    // Extraire la date et l'heure de la demande
+    const dateTime = extraireDateHeureDemande(d);
+    let dateStr = "";
+    let heureStr = "";
+    
+    if (dateTime.found) {
+        dateStr = dateTime.date;
+        heureStr = dateTime.heure;
+    } else {
+        // Si aucune date trouvée, utiliser la date du jour
+        const now = new Date();
+        const moisNoms = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+        dateStr = `${now.getDate()} ${moisNoms[now.getMonth()]} ${now.getFullYear()}`;
+        
+        // Essayer d'extraire uniquement l'heure (format HH:MM)
+        const heurePattern = /(\d{1,2})[:h](\d{2})/i;
+        const heureMatch = d.match(heurePattern);
+        if (heureMatch) {
+            heureStr = `${heureMatch[1].padStart(2, '0')}:${heureMatch[2]}`;
+        } else {
+            heureStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+        }
+    }
+    
+    const label = (canal === "EMAIL") 
+        ? `Mail Odigo du ${dateStr} à ${heureStr}` 
+        : `AM du ${dateStr} à ${heureStr}`;
+    
+    const bloc = `${b}\n\n***************************\n\n${label}\n\nRequête :\n${d}\n\nRéponse :\n${r}`;
+    
+    copyToClipboard(bloc);
+    showStatus("📋 Historisation copiée !", "success");
+}
         copyToClipboard(bloc);
         showStatus("📋 Historisation copiée !", "success");
     }
