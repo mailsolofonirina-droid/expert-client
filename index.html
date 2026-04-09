@@ -49,6 +49,8 @@
         .btn-import:hover { background: #5a784c; }
         .btn-expand { background: #8aa0ae; color: white; margin-bottom: 5px; }
         .btn-expand:hover { background: #788e9c; }
+        .btn-verify { background: #4a7c6e; color: white; }
+        .btn-verify:hover { background: #3a6c5e; }
         
         .btn-group { display: flex; gap: 8px; margin-top: 10px; }
         .btn-group .btn { margin-top: 0; }
@@ -123,6 +125,44 @@
         }
         .btn-small:hover {
             background: #788e9c;
+        }
+        
+        .model-validation {
+            margin-top: 8px;
+            padding: 8px;
+            background: white;
+            border-radius: 4px;
+            font-size: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        .model-validation h4 {
+            margin: 0 0 5px 0;
+            font-size: 11px;
+            color: #5a6e7c;
+        }
+        .model-item {
+            padding: 3px 5px;
+            margin: 2px 0;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 9px;
+        }
+        .model-available {
+            background: #f0f6ec;
+            color: #4a6a3a;
+            border-left: 2px solid #7c9a6e;
+        }
+        .model-unavailable {
+            background: #fef5f3;
+            color: #b45a4a;
+            border-left: 2px solid #c97d6e;
+            opacity: 0.6;
+        }
+        .model-current {
+            background: #e8f0f4;
+            border-left: 2px solid #6c8e9e;
+            font-weight: bold;
         }
     </style>
 </head>
@@ -223,7 +263,16 @@
                     <option value="gemini-2.0-flash-lite">💨 Gemini 2.0 Flash Lite</option>
                 </optgroup>
             </select>
-            <button class="test-btn" onclick="testerCleApi()">🔍 Tester la clé API</button>
+            
+            <!-- NOUVEAU : Bouton de vérification complète -->
+            <button class="test-btn btn-verify" onclick="verifierCompletAPI()" style="background: #4a7c6e; margin-top: 10px;">🔍 VÉRIFICATION COMPLÈTE DE L'API</button>
+            
+            <div id="modelValidationResult" class="model-validation" style="display: none;">
+                <h4>📋 Résultat de la vérification :</h4>
+                <div id="validationDetails"></div>
+            </div>
+            
+            <button class="test-btn" onclick="testerCleApi()">🔑 Tester la clé API</button>
             <button class="test-btn" onclick="verifierModelesDisponibles()" style="background: #6c8e9e;">📋 Vérifier les modèles disponibles</button>
             <div class="info-text">Obtenez une clé sur <a href="https://aistudio.google.com/apikey" target="_blank">Google AI Studio</a> (gratuite)</div>
             <div class="info-text" style="color: #b8860b; margin-top: 8px;">💡 <strong>Astuce :</strong> Pour Gemini 3, assurez-vous d'avoir activé les preview models</div>
@@ -524,9 +573,165 @@ E : Actions possibles sur l'Espace Client ou anticipations indiquées (Indiquer 
         showStatus("<span class='loading'></span> Test...", "info");
         try {
             const response = await fetch(`https://generativelanguage.googleapis.com/v1/models?key=${apiKey}`);
-            if (response.ok) showStatus("✅ Clé valide !", "success");
-            else showStatus("❌ Clé invalide", "error");
-        } catch (error) { showStatus(`❌ Erreur: ${error.message}`, "error"); }
+            if (response.ok) {
+                const data = await response.json();
+                const modelCount = data.models ? data.models.length : 0;
+                showStatus(`✅ Clé valide ! ${modelCount} modèles disponibles`, "success");
+                return true;
+            } else {
+                showStatus("❌ Clé invalide", "error");
+                return false;
+            }
+        } catch (error) { showStatus(`❌ Erreur: ${error.message}`, "error"); return false; }
+    }
+    
+    // NOUVELLE FONCTION : Vérification complète de l'API
+    async function verifierCompletAPI() {
+        const apiKey = document.getElementById('api_key').value.trim();
+        const resultDiv = document.getElementById('modelValidationResult');
+        const detailsDiv = document.getElementById('validationDetails');
+        
+        if (!apiKey) {
+            showStatus("❌ Veuillez saisir une clé API", "error");
+            return;
+        }
+        
+        showStatus("<span class='loading'></span> Vérification complète en cours...", "info");
+        resultDiv.style.display = "block";
+        detailsDiv.innerHTML = '<div style="text-align: center;"><span class="loading"></span> Analyse des modèles...</div>';
+        
+        try {
+            // 1. Vérifier la clé et récupérer tous les modèles
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1/models?key=${apiKey}`);
+            
+            if (!response.ok) {
+                detailsDiv.innerHTML = `<div class="model-item model-unavailable">❌ Clé API invalide ou expirée</div>`;
+                showStatus("❌ Clé API invalide", "error");
+                return;
+            }
+            
+            const data = await response.json();
+            const allModels = data.models || [];
+            
+            // 2. Définir les modèles à vérifier
+            const modelsToCheck = [
+                { name: "gemini-3-pro-preview", display: "🚀 Gemini 3 Pro Preview", category: "Gemini 3" },
+                { name: "gemini-3-flash-preview", display: "⚡ Gemini 3 Flash Preview", category: "Gemini 3" },
+                { name: "gemini-3-flash-lite-preview", display: "💨 Gemini 3 Flash Lite Preview", category: "Gemini 3" },
+                { name: "gemini-2.5-flash", display: "✨ Gemini 2.5 Flash", category: "Gemini 2.5" },
+                { name: "gemini-2.0-flash", display: "⚡ Gemini 2.0 Flash", category: "Gemini 2.0" },
+                { name: "gemini-2.0-flash-lite", display: "💨 Gemini 2.0 Flash Lite", category: "Gemini 2.0" },
+                { name: "gemini-1.5-pro", display: "🎯 Gemini 1.5 Pro", category: "Gemini 1.5" },
+                { name: "gemini-1.5-flash", display: "⚡ Gemini 1.5 Flash", category: "Gemini 1.5" },
+                { name: "gemini-1.0-pro", display: "📌 Gemini 1.0 Pro", category: "Gemini 1.0" }
+            ];
+            
+            // 3. Vérifier chaque modèle
+            const modelStatuses = modelsToCheck.map(model => {
+                const available = allModels.some(m => m.name.includes(model.name) || m.name === model.name);
+                return { ...model, available };
+            });
+            
+            // 4. Compter les modèles disponibles par catégorie
+            const availableModels = modelStatuses.filter(m => m.available);
+            const totalAvailable = availableModels.length;
+            const gemini3Available = modelStatuses.filter(m => m.category === "Gemini 3" && m.available).length;
+            const gemini25Available = modelStatuses.filter(m => m.category === "Gemini 2.5" && m.available).length;
+            const gemini20Available = modelStatuses.filter(m => m.category === "Gemini 2.0" && m.available).length;
+            
+            // 5. Générer l'affichage
+            let html = `<div style="margin-bottom: 8px; padding: 5px; background: #e8f0f4; border-radius: 4px;">
+                            <strong>📊 RÉSUMÉ DE LA VÉRIFICATION</strong><br>
+                            🔑 Clé API : ✅ Valide<br>
+                            📦 Modèles trouvés : ${allModels.length} au total<br>
+                            ✅ Modèles compatibles vérifiés : ${totalAvailable}/${modelsToCheck.length}<br>
+                            🌟 Gemini 3 : ${gemini3Available}/3 disponibles<br>
+                            ✨ Gemini 2.5 : ${gemini25Available}/1 disponible<br>
+                            ⚡ Gemini 2.0 : ${gemini20Available}/2 disponibles
+                        </div>`;
+            
+            html += `<div style="max-height: 200px; overflow-y: auto;">`;
+            
+            // Afficher les modèles par catégorie
+            const categories = ["Gemini 3", "Gemini 2.5", "Gemini 2.0", "Gemini 1.5", "Gemini 1.0"];
+            categories.forEach(cat => {
+                const catModels = modelStatuses.filter(m => m.category === cat);
+                if (catModels.length > 0) {
+                    html += `<div style="margin-top: 5px;"><strong>${cat}</strong></div>`;
+                    catModels.forEach(model => {
+                        const statusClass = model.available ? "model-available" : "model-unavailable";
+                        const statusIcon = model.available ? "✅" : "❌";
+                        html += `<div class="model-item ${statusClass}">${statusIcon} ${model.display}</div>`;
+                    });
+                }
+            });
+            
+            html += `</div>`;
+            
+            // Ajouter des recommandations
+            if (gemini3Available > 0) {
+                html += `<div style="margin-top: 8px; padding: 5px; background: #f0f6ec; border-radius: 4px; border-left: 3px solid #7c9a6e;">
+                            💡 <strong>Recommandation :</strong> Vous avez accès aux modèles Gemini 3 ! Nous vous recommandons d'utiliser <strong>gemini-3-flash-preview</strong> pour un excellent équilibre qualité/vitesse.
+                         </div>`;
+            } else if (gemini25Available > 0) {
+                html += `<div style="margin-top: 8px; padding: 5px; background: #f0f6ec; border-radius: 4px; border-left: 3px solid #7c9a6e;">
+                            💡 <strong>Recommandation :</strong> Gemini 2.5 Flash est recommandé pour des performances stables et de haute qualité.
+                         </div>`;
+            } else if (gemini20Available > 0) {
+                html += `<div style="margin-top: 8px; padding: 5px; background: #fef8f0; border-radius: 4px; border-left: 3px solid #d9b48b;">
+                            ⚠️ <strong>Note :</strong> Les modèles Gemini 3 ne sont pas disponibles avec cette clé. Pour y accéder, activez les "Preview models" dans Google AI Studio.
+                         </div>`;
+            }
+            
+            detailsDiv.innerHTML = html;
+            showStatus(`✅ Vérification terminée - ${totalAvailable} modèles compatibles disponibles`, "success");
+            
+            // Mettre à jour le select pour n'afficher que les modèles disponibles (optionnel)
+            mettreAJourSelectModeles(modelStatuses);
+            
+        } catch (error) {
+            detailsDiv.innerHTML = `<div class="model-item model-unavailable">❌ Erreur lors de la vérification: ${error.message}</div>`;
+            showStatus(`❌ Erreur: ${error.message}`, "error");
+        }
+    }
+    
+    // Fonction pour mettre à jour le select des modèles
+    function mettreAJourSelectModeles(modelStatuses) {
+        const select = document.getElementById('model_select');
+        const currentValue = select.value;
+        
+        // Marquer les options disponibles
+        for (let i = 0; i < select.options.length; i++) {
+            const option = select.options[i];
+            const modelValue = option.value;
+            const modelStatus = modelStatuses.find(m => m.name === modelValue);
+            
+            if (modelStatus && !modelStatus.available) {
+                option.style.color = "#999";
+                option.style.fontStyle = "italic";
+                option.title = "⚠️ Ce modèle n'est pas disponible avec votre clé API actuelle";
+            } else {
+                option.style.color = "";
+                option.style.fontStyle = "";
+                option.title = "";
+            }
+        }
+        
+        // Si le modèle actuel n'est pas disponible, proposer de changer
+        const currentModelStatus = modelStatuses.find(m => m.name === currentValue);
+        if (currentModelStatus && !currentModelStatus.available) {
+            const availableModel = modelStatuses.find(m => m.available);
+            if (availableModel) {
+                setTimeout(() => {
+                    const changer = confirm(`⚠️ Le modèle "${currentModelStatus.display}" n'est pas disponible.\n\nVoulez-vous passer à "${availableModel.display}" ?`);
+                    if (changer) {
+                        select.value = availableModel.name;
+                        sauvegarderModele();
+                        showStatus(`✅ Modèle changé pour ${availableModel.display}`, "success");
+                    }
+                }, 500);
+            }
+        }
     }
     
     async function verifierModelesDisponibles() {
@@ -538,7 +743,9 @@ E : Actions possibles sur l'Espace Client ou anticipations indiquées (Indiquer 
             const data = await response.json();
             if (response.ok && data.models) {
                 const gemini3Models = data.models.filter(m => m.name.includes('gemini-3')).length;
-                showStatus(`📋 ${gemini3Models} modèles Gemini 3 disponibles`, "success");
+                const gemini25Models = data.models.filter(m => m.name.includes('gemini-2.5')).length;
+                const allModels = data.models.length;
+                showStatus(`📋 ${allModels} modèles trouvés (Gemini 3: ${gemini3Models}, Gemini 2.5: ${gemini25Models})`, "success");
             } else showStatus("❌ Erreur", "error");
         } catch (error) { showStatus(`❌ Erreur`, "error"); }
     }
